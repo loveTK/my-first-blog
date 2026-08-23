@@ -59,14 +59,24 @@ def detect_staff_lines(gray_np):
 
 
 def group_into_staves(line_centers):
-    """검출된 오선 중심좌표 리스트를 5개씩 묶어서 스태프(보표) 단위로 그룹핑"""
+    """검출된 오선 중심좌표 리스트를 5개씩 묶어서 스태프(보표) 단위로 그룹핑.
+
+    line_centers에는 제목/가사/셈여림 등에서 잡힌 노이즈 라인이 실제 오선 앞뒤에
+    섞여 들어올 수 있다. 고정 보폭(5칸씩)으로만 훑으면 노이즈 라인 하나 때문에
+    이후 모든 그룹의 정렬이 어긋나 버리므로, 5줄 묶음이 유효하지 않으면 한 칸만
+    건너뛰고 재동기화를 시도한다."""
     staves = []
-    for i in range(0, len(line_centers) - 4, 5):
+    i = 0
+    n = len(line_centers)
+    while i <= n - 5:
         group = line_centers[i:i + 5]
         # 5줄 간 간격이 서로 비슷한지 확인(노이즈 라인 제외)
         diffs = np.diff(group)
-        if diffs.max() / max(diffs.min(), 1e-6) < 1.6:
+        if diffs.min() > 0 and diffs.max() / diffs.min() < 1.6:
             staves.append(group)
+            i += 5
+        else:
+            i += 1
     return staves
 
 
