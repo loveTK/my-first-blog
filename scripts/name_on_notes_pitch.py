@@ -9,10 +9,16 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 - 그랜드 스태프(피아노보) 전용: 각 시스템이 [높은음자리, 낮은음자리] 순서로 위→아래 배치된다고 가정
 - 낱개 임시표(그 음에만 붙는 ♯♭♮)는 반영하지 못함 — 조표(key signature)만 반영
 - 속이 빈 노트헤드(온음표/2분음표)는 별도 검출 로직 필요 (아직 미포함)
+- 보표 중간에 음자리표가 바뀌는 표기(레저 라인 절약용)는 인식하지 못함
+  (템플릿 매칭으로 시도했으나 저해상도에서 오탐/미탐이 많아 폐기)
+- 조표는 자동 검출하지 않음: 곡 중간 조표 변경은 --key-map으로 수동 지정
+  (자동 검출도 시도했으나 200dpi 기준 임시표가 너무 작아 개수/모양 구분 불가로 폐기)
 
 사용법:
     python name_on_notes_pitch.py input.pdf -o output.pdf --flats 4
     python name_on_notes_pitch.py input.pdf -o output.pdf --sharps 2
+    # 곡 중간 조표 변경: 5번째 시스템부터 ♯3개, 8번째 시스템부터 ♭5개
+    python name_on_notes_pitch.py input.pdf -o output.pdf --key-map "5:sharps=3,8:flats=5"
 """
 
 import argparse
@@ -195,6 +201,46 @@ def y_to_note(y, staff_lines, clef):
         return step_to_note('E', 4, step)
     else:  # bass
         return step_to_note('G', 2, step)
+
+
+def parse_key_map(spec):
+    """--key-map "5:sharps=3,8:flats=5" 형태의 문자열을
+    {시스템전역번호: (flats, sharps)} 딕셔너리로 파싱.
+    시스템 전역번호는 문서 전체를 통틀어 1부터 센 시스템(그랜드스태프) 순번이며,
+    지정된 번호부터 다음 지정 전까지 그 조표가 적용된다."""
+    mapping = {}
+    if not spec:
+        return mapping
+    for part in spec.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if ':' not in part or '=' not in part:
+            raise ValueError(f"--key-map 형식 오류: '{part}' (예: 5:sharps=3)")
+        sys_str, kv = part.split(':', 1)
+        key, val = kv.split('=', 1)
+        sys_num = int(sys_str.strip())
+        key = key.strip()
+        val = int(val.strip())
+        if key == 'sharps':
+            mapping[sys_num] = (0, val)
+        elif key == 'flats':
+            mapping[sys_num] = (val, 0)
+        else:
+            raise ValueError(f"--key-map 항목은 flats 또는 sharps만 지정 가능: '{part}'")
+    return mapping
+
+
+def effective_key(key_map, default_flats, default_sharps, sys_num):
+    """전역 시스템번호 sys_num 시점에 적용되는 (flats, sharps)를 key_map에서 조회.
+    sys_num 이하인 항목 중 가장 큰 번호의 값을 쓰고, 없으면 기본값을 쓴다."""
+    flats, sharps = default_flats, default_sharps
+    for k in sorted(key_map):
+        if k <= sys_num:
+            flats, sharps = key_map[k]
+        else:
+            break
+    return flats, sharps
 
 
 def apply_key_signature(letter, flats=0, sharps=0):
@@ -382,18 +428,22 @@ def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
     draw.text((tx, ty), text, fill=text_color, font=font)
 
 
-def process(input_path, output_path, flats=0, sharps=0, dpi=200, debug=False):
+def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, debug=False):
+    key_map = key_map or {}
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
     total = 0
     unmatched = 0
     total_chords = 0
+    global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (조표 맵 조회용 전역 순번 기준)
 
     for pi, page in enumerate(pages):
         noteheads, spacing, line_centers = detect_noteheads(page)
         staves = group_into_staves(line_centers)
         systems = group_into_systems(staves)
         img_np_full = np.array(page.convert("L"))
+        # 이 페이지의 각 시스템(페이지 로컬 인덱스)에 대응하는 문서 전체 기준 전역 순번(1부터)
+        global_sys_nums = [global_sys_offset + i + 1 for i in range(len(systems))]
 
         # 오선 시스템에서 너무 멀리 떨어진 검출(제목/텍스트 등 오탐)은 제외
         if systems:
@@ -457,8 +507,10 @@ def process(input_path, output_path, flats=0, sharps=0, dpi=200, debug=False):
             else:
                 clef, lines = 'bass', sysm['bass']
 
+            sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[best_sys_idx])
+
             letter, octave = y_to_note(y, lines, clef)
-            label = apply_key_signature(letter, flats=flats, sharps=sharps)
+            label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps)
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             draw_label_with_bg(draw, x, y - r - font_size * 1.5, label, font, color)
@@ -469,16 +521,17 @@ def process(input_path, output_path, flats=0, sharps=0, dpi=200, debug=False):
 
             mi = find_measure_idx(best_sys_idx, x)
             if mi is not None:
-                st = letter_to_semitone(letter, flats=flats, sharps=sharps)
+                st = letter_to_semitone(letter, flats=sys_flats, sharps=sys_sharps)
                 measure_pitch_sets[best_sys_idx][mi].add(st)
 
         # ---- 2차: 마디별 코드 추정 + 표시 (참고용 근사치) ----
         page_chords = 0
         for si, sysm in enumerate(systems):
+            sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[si])
             top_y = sysm['treble'][0] - spacing * 2.6
             for mi, (lo, hi) in enumerate(system_measures[si]):
                 pcs = measure_pitch_sets[si][mi]
-                chord = guess_chord(pcs, flats=flats, sharps=sharps)
+                chord = guess_chord(pcs, flats=sys_flats, sharps=sys_sharps)
                 if chord is None:
                     continue
                 cx = (lo + hi) / 2
@@ -487,8 +540,10 @@ def process(input_path, output_path, flats=0, sharps=0, dpi=200, debug=False):
 
         total += page_matched
         total_chords += page_chords
+        global_sys_offset += len(systems)
         out_pages.append(img)
-        print(f"  [{pi+1}/{len(pages)}] 오선간격={spacing}px, 시스템={len(systems)}개, "
+        sys_range = f"{global_sys_nums[0]}~{global_sys_nums[-1]}" if global_sys_nums else "-"
+        print(f"  [{pi+1}/{len(pages)}] 오선간격={spacing}px, 시스템={len(systems)}개(전역 #{sys_range}), "
               f"음이름={page_matched}개, 코드={page_chords}개")
 
     ext = os.path.splitext(output_path)[1].lower()
@@ -504,10 +559,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="악보 위 음표마다 고정도 계이름 삽입")
     parser.add_argument("input")
     parser.add_argument("-o", "--output", required=True)
-    parser.add_argument("--flats", type=int, default=0, help="조표의 ♭ 개수")
-    parser.add_argument("--sharps", type=int, default=0, help="조표의 ♯ 개수")
+    parser.add_argument("--flats", type=int, default=0, help="조표의 ♭ 개수 (곡 시작부터 적용되는 기본값)")
+    parser.add_argument("--sharps", type=int, default=0, help="조표의 ♯ 개수 (곡 시작부터 적용되는 기본값)")
+    parser.add_argument(
+        "--key-map", default=None,
+        help="곡 중간 조표 변경 지정. '전역시스템번호:flats=N' 또는 '...:sharps=N'을 콤마로 나열. "
+             "예: '5:sharps=3,8:flats=5' -> 5번째 시스템부터 ♯3개, 8번째 시스템부터 ♭5개. "
+             "시스템 전역번호는 --key-map 없이 한 번 먼저 돌려서 나오는 "
+             "'시스템=N개(전역 #A~B)' 로그로 확인한 뒤 지정한다."
+    )
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
-    process(args.input, args.output, flats=args.flats, sharps=args.sharps, dpi=args.dpi, debug=args.debug)
+    key_map = parse_key_map(args.key_map) if args.key_map else {}
+    process(args.input, args.output, flats=args.flats, sharps=args.sharps, key_map=key_map,
+            dpi=args.dpi, debug=args.debug)
