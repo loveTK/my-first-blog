@@ -5,10 +5,16 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 오선 위치 + 음자리표(그랜드스태프 가정: 위=높은음자리, 아래=낮은음자리) + 조표를 이용해
 실제 음이름을 계산한 뒤, 각 음표 위에 고정도 계이름(도레미파솔라시, 항상 C=도)을 써넣는다.
 
+음표 길이(리듬):
+- 스템 유무 + 노트헤드가 속이 찬지/빈지 + 스템 끝의 플래그(꼬리)/빔 존재 여부로
+  온음표/2분음표/4분음표/"8분음표 이하"를 라벨 옆에 (온)/(2)/없음/(8)로 표시한다.
+- 8분/16분/32분음표는 서로 구분하지 않고 전부 "(8)"로 뭉뚱그린다. 플래그 개수를
+  세어 세분해보려 했으나, 이 해상도에서는 신뢰도가 떨어져(다른 기호 자동검출
+  시도들과 동일한 문제) 포함하지 않았다.
+
 한계 (v1):
 - 그랜드 스태프(피아노보) 전용: 각 시스템이 [높은음자리, 낮은음자리] 순서로 위→아래 배치된다고 가정
 - 낱개 임시표(그 음에만 붙는 ♯♭♮)는 반영하지 못함 — 조표(key signature)만 반영
-- 속이 빈 노트헤드(온음표/2분음표)는 별도 검출 로직 필요 (아직 미포함)
 - 보표 중간에 음자리표가 바뀌는 표기(레저 라인 절약용)는 인식하지 못함
   (템플릿 매칭으로 시도했으나 저해상도에서 오탐/미탐이 많아 폐기)
 - 조표는 자동 검출하지 않음: 곡 중간 조표 변경은 --key-map으로 수동 지정
@@ -297,6 +303,108 @@ def guess_chord(pitch_classes, flats=0, sharps=0):
     return best[1] if best else None
 
 
+# ---------- 음표 길이(리듬) 판별 ----------
+
+def find_stem(binary, x, y, r, spacing):
+    """노트헤드에 붙은 스템(막대)을 찾는다. 노트헤드 중심 근처 작은 박스 안의
+    모든 어두운 점에서 위/아래로 연속된 어두운 길이를 재서 최댓값을 취한다
+    (스템이 정확히 중심 바로 위/아래가 아니라 오른쪽/왼쪽 가장자리에 붙기 때문에
+    한 지점만 스캔하면 놓치기 쉽다).
+    반환: {'up': (길이, dx, dy), 'down': (길이, dx, dy)}"""
+    H, W = binary.shape
+    stem_search = int(spacing * 4.5)
+    dx_range = range(-int(spacing * 0.9), int(spacing * 0.9) + 1)
+    dy_range = range(-int(r * 0.8), int(r * 0.8) + 1)
+    best_up = (0, 0, 0)
+    best_down = (0, 0, 0)
+    for dx in dx_range:
+        xx = x + dx
+        if xx < 0 or xx >= W:
+            continue
+        for dy in dy_range:
+            y0 = y + dy
+            if y0 < 0 or y0 >= H or binary[y0, xx] == 0:
+                continue
+            n, yy = 0, y0
+            while yy >= 0 and yy > y0 - stem_search and binary[yy, xx] > 0:
+                n += 1
+                yy -= 1
+            if n > best_up[0]:
+                best_up = (n, dx, dy)
+            n, yy = 0, y0
+            while yy < H and yy < y0 + stem_search and binary[yy, xx] > 0:
+                n += 1
+                yy += 1
+            if n > best_down[0]:
+                best_down = (n, dx, dy)
+    return {'up': best_up, 'down': best_down}
+
+
+def is_mid_stem_artifact(stem, spacing):
+    """진짜 노트헤드는 스템이 한쪽 방향으로만 길게 뻗고 반대쪽은 타원 크기만큼만
+    짧다. 위/아래 둘 다 길면 실제로는 다른 음표의 스템이나 8분음표 이하의
+    플래그(꼬리) 한가운데에 찍힌 가짜 검출(예: 플래그의 곡선이 만든 작은 구멍이
+    '속 빈 노트헤드'로 오검출되는 경우)이다."""
+    threshold = spacing * 1.3
+    return stem['up'][0] > threshold and stem['down'][0] > threshold
+
+
+def classify_duration(binary, x, y, r, spacing, stem, is_hollow, staff_line_ys=()):
+    """스템 유무 + 속이 찬/빈 노트헤드 + 스템 끝의 플래그(꼬리)/빔 존재 여부로
+    음표 길이를 대략 분류한다.
+    반환: 'whole'(온음표) | 'half'(2분음표) | 'quarter'(4분음표) | 'short'(8분음표 이하)
+    'short'는 8분/16분/32분을 세분하지 않는다 — 플래그 개수 세기는 이 해상도에서
+    신뢰도가 떨어져(다른 기호 자동검출 시도들과 동일한 문제) 포함하지 않았다.
+
+    is_hollow는 호출 쪽(detect_noteheads가 만든 hollow_set)에서 미리 판정된 값을
+    받는다 — 오선이 노트헤드 중앙을 가로지르면 그 지점만 픽셀로 다시 샘플링할
+    경우 오선 자체의 어두운 픽셀 때문에 판정이 뒤집히기 때문이다.
+    staff_line_ys는 같은 이유로 플래그 폭을 잴 때 오선이 지나가는 행을 건너뛰기
+    위해 쓴다 — 오선은 그 행 전체가 어두워서, 건너뛰지 않으면 플래그의 폭으로
+    오인된다."""
+    stem_len = max(stem['up'][0], stem['down'][0])
+    has_stem = stem_len > spacing * 2.2
+
+    if not has_stem:
+        return 'whole' if is_hollow else 'quarter'
+    if is_hollow:
+        return 'half'
+
+    direction, (length, dx, dy) = (
+        ('up', stem['up']) if stem['up'][0] >= stem['down'][0] else ('down', stem['down'])
+    )
+    tip_x = x + dx
+    tip_y = (y + dy - length) if direction == 'up' else (y + dy + length)
+    span = int(spacing * 1.6)
+    max_width = 0
+    half_win = int(spacing)
+    for t in range(span):
+        yy = tip_y + t if direction == 'up' else tip_y - t
+        if yy < 0 or yy >= binary.shape[0]:
+            continue
+        if any(abs(yy - ly) <= 1 for ly in staff_line_ys):
+            continue  # 오선이 지나가는 행은 폭 측정에서 제외
+        x0, x1 = max(0, tip_x - half_win), tip_x + half_win
+        row = binary[yy, x0:x1]
+        center = tip_x - x0
+        if center < 0 or center >= len(row) or row[center] == 0:
+            continue
+        w, i = 1, center - 1
+        while i >= 0 and row[i] > 0:
+            w += 1
+            i -= 1
+        i = center + 1
+        while i < len(row) and row[i] > 0:
+            w += 1
+            i += 1
+        max_width = max(max_width, w)
+
+    return 'short' if max_width > spacing * 0.6 else 'quarter'
+
+
+DURATION_SUFFIX = {'whole': '(온)', 'half': '(2)', 'quarter': '', 'short': '(8)'}
+
+
 # ---------- 노트헤드 검출 (v1과 동일) ----------
 
 def detect_noteheads(pil_img, staff_spacing=None):
@@ -331,8 +439,12 @@ def detect_noteheads(pil_img, staff_spacing=None):
     # ---- 빈 노트헤드(온음표/2분음표) 검출: 구멍(hole) 기반 ----
     hollow = detect_hollow_noteheads(binary, nh_w, nh_h)
     noteheads.extend(hollow)
+    # 오선이 노트헤드 중앙을 가로지르면 그 자리만 픽셀 샘플링으로는 속이
+    # 찬/빈 판정이 흔들리므로, 리듬 판별에 쓸 수 있게 hollow 여부를 원본에서
+    # 바로 태깅해서 함께 반환한다
+    hollow_set = set(hollow)
 
-    return noteheads, staff_spacing, line_centers
+    return noteheads, staff_spacing, line_centers, hollow_set
 
 
 def detect_hollow_noteheads(binary, nh_w, nh_h):
@@ -438,10 +550,11 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (조표 맵 조회용 전역 순번 기준)
 
     for pi, page in enumerate(pages):
-        noteheads, spacing, line_centers = detect_noteheads(page)
+        noteheads, spacing, line_centers, hollow_set = detect_noteheads(page)
         staves = group_into_staves(line_centers)
         systems = group_into_systems(staves)
         img_np_full = np.array(page.convert("L"))
+        _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
         # 이 페이지의 각 시스템(페이지 로컬 인덱스)에 대응하는 문서 전체 기준 전역 순번(1부터)
         global_sys_nums = [global_sys_offset + i + 1 for i in range(len(systems))]
 
@@ -455,6 +568,18 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
             ]
             # 각 시스템의 음자리표+조표 구역은 제외
             noteheads = exclude_before_first_barline(noteheads, systems, img_np_full, spacing)
+
+        # 스템 정보를 미리 계산해두고, 다른 음표의 스템/플래그 한가운데를 잘못
+        # 짚은 가짜 검출은 걸러낸다
+        note_stems = {}
+        filtered_noteheads = []
+        for (x, y, r) in noteheads:
+            stem = find_stem(binary_full, x, y, r, spacing)
+            if is_mid_stem_artifact(stem, spacing):
+                continue
+            note_stems[(x, y, r)] = stem
+            filtered_noteheads.append((x, y, r))
+        noteheads = filtered_noteheads
 
         img = page.convert("RGB").copy()
         draw = ImageDraw.Draw(img)
@@ -511,6 +636,11 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
 
             letter, octave = y_to_note(y, lines, clef)
             label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps)
+            stem = note_stems.get((x, y, r)) or find_stem(binary_full, x, y, r, spacing)
+            duration = classify_duration(binary_full, x, y, r, spacing, stem,
+                                          is_hollow=(x, y, r) in hollow_set,
+                                          staff_line_ys=lines)
+            label += DURATION_SUFFIX[duration]
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             draw_label_with_bg(draw, x, y - r - font_size * 1.5, label, font, color)
