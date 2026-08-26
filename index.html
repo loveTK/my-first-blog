@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>my-first-blog</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <h1>my-first-blog</h1>
+    <p class="tagline">개인 저장소 소개 페이지</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>이 저장소는</h2>
+      <p>
+        개인 프로젝트를 모아두는 저장소입니다.
+        지금은 악보 위에 계이름을 자동으로 써주는 파이썬 스크립트가 들어있습니다.
+      </p>
+    </section>
+
+    <section>
+      <h2>악보 계이름 자동 삽입 스크립트</h2>
+      <p>
+        PDF/JPG/PNG 악보를 입력받아 음표 머리를 검출하고, 오선 위치와 음자리표,
+        조표를 이용해 실제 음이름을 계산한 뒤 각 음표 위에 고정도 계이름
+        (도레미파솔라시, 항상 C=도)을 써넣습니다. 마디별 코드 추정 기능도 포함되어 있습니다.
+      </p>
+      <pre><code>python scripts/name_on_notes_pitch.py input.pdf -o output.pdf --flats 4</code></pre>
+      <p>
+        <a href="scripts/name_on_notes_pitch.py">스크립트 소스 보기</a>
+      </p>
+    </section>
+
+    <section>
+      <h2>바로가기</h2>
+      <ul class="links">
+        <li><a href="https://github.com/loveTK/my-first-blog">GitHub 저장소</a></li>
+        <li><a href="PUBLISHING.md">이 페이지 퍼블리싱 가이드</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>my-first-blog</p>
+  </footer>
+</body>
+</html>
