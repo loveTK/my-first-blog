@@ -20,11 +20,20 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 - 조표는 자동 검출하지 않음: 곡 중간 조표 변경은 --key-map으로 수동 지정
   (자동 검출도 시도했으나 200dpi 기준 임시표가 너무 작아 개수/모양 구분 불가로 폐기)
 
+계이름 언어(--lang):
+- ko(기본): 도레미파솔라시 / solfege: Do Re Mi Fa Sol La Si / letter: C D E F G A B
+- ja: ド レ ミ ファ ソ ラ シ (일본어 가타카나 솔페이지)
+- 독일식(H/B 임시표 표기 등 반음별 고유 이름 체계)은 별도 명명 규칙이 필요해 포함하지 않았다.
+
+출력 파일명:
+- -o를 안 주면 입력 파일과 같은 위치에 "원본파일명_note.확장자"로 자동 저장한다.
+
 사용법:
-    python name_on_notes_pitch.py input.pdf -o output.pdf --flats 4
-    python name_on_notes_pitch.py input.pdf -o output.pdf --sharps 2
+    python name_on_notes_pitch.py input.pdf --flats 4
+    python name_on_notes_pitch.py input.pdf --sharps 2 --lang solfege
+    python name_on_notes_pitch.py input.pdf -o output.pdf --lang ja
     # 곡 중간 조표 변경: 5번째 시스템부터 ♯3개, 8번째 시스템부터 ♭5개
-    python name_on_notes_pitch.py input.pdf -o output.pdf --key-map "5:sharps=3,8:flats=5"
+    python name_on_notes_pitch.py input.pdf --key-map "5:sharps=3,8:flats=5"
 """
 
 import argparse
@@ -36,8 +45,15 @@ from PIL import Image, ImageDraw, ImageFont
 
 FLAT_ORDER = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
 SHARP_ORDER = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
-FIXED_DO = {'C': '도', 'D': '레', 'E': '미', 'F': '파', 'G': '솔', 'A': '라', 'B': '시'}
 LETTERS_ASC = ['C', 'D', 'E', 'F', 'G', 'A', 'B']  # 옥타브 내 오름차순
+
+NOTE_NAMES = {
+    'ko': {'C': '도', 'D': '레', 'E': '미', 'F': '파', 'G': '솔', 'A': '라', 'B': '시'},
+    'solfege': {'C': 'Do', 'D': 'Re', 'E': 'Mi', 'F': 'Fa', 'G': 'Sol', 'A': 'La', 'B': 'Si'},
+    'letter': {'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'A': 'A', 'B': 'B'},
+    'ja': {'C': 'ド', 'D': 'レ', 'E': 'ミ', 'F': 'ファ', 'G': 'ソ', 'A': 'ラ', 'B': 'シ'},
+}
+FIXED_DO = NOTE_NAMES['ko']  # 하위 호환용 별칭
 
 
 def load_pages(input_path, dpi=200):
@@ -249,12 +265,13 @@ def effective_key(key_map, default_flats, default_sharps, sys_num):
     return flats, sharps
 
 
-def apply_key_signature(letter, flats=0, sharps=0):
+def apply_key_signature(letter, flats=0, sharps=0, lang='ko'):
+    names = NOTE_NAMES[lang]
     if flats > 0 and letter in FLAT_ORDER[:flats]:
-        return FIXED_DO[letter] + '♭'
+        return names[letter] + '♭'
     if sharps > 0 and letter in SHARP_ORDER[:sharps]:
-        return FIXED_DO[letter] + '♯'
-    return FIXED_DO[letter]
+        return names[letter] + '♯'
+    return names[letter]
 
 
 # ---------- 코드(화음) 추정 ----------
@@ -540,7 +557,8 @@ def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
     draw.text((tx, ty), text, fill=text_color, font=font)
 
 
-def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, debug=False):
+def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
+            font_scale=1.0, dpi=200, debug=False):
     key_map = key_map or {}
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
@@ -583,7 +601,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
 
         img = page.convert("RGB").copy()
         draw = ImageDraw.Draw(img)
-        font_size = max(8, int(spacing * 0.9))
+        font_size = max(10, int(spacing * 1.3 * font_scale))
         font = get_font(font_size)
         chord_font = get_font(int(font_size * 1.05))
 
@@ -635,7 +653,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
             sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[best_sys_idx])
 
             letter, octave = y_to_note(y, lines, clef)
-            label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps)
+            label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps, lang=lang)
             stem = note_stems.get((x, y, r)) or find_stem(binary_full, x, y, r, spacing)
             duration = classify_duration(binary_full, x, y, r, spacing, stem,
                                           is_hollow=(x, y, r) in hollow_set,
@@ -685,10 +703,19 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, dpi=200, d
     print(f"완료: 음이름 {total}개, 코드(참고용) {total_chords}개 부착 (매칭 실패 {unmatched}개) -> {output_path}")
 
 
+def default_output_path(input_path):
+    """-o를 안 주면 입력 파일과 같은 위치에 '원본파일명_note.확장자'로 저장"""
+    root, ext = os.path.splitext(input_path)
+    return f"{root}_note{ext}"
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="악보 위 음표마다 고정도 계이름 삽입")
     parser.add_argument("input")
-    parser.add_argument("-o", "--output", required=True)
+    parser.add_argument(
+        "-o", "--output", default=None,
+        help="출력 파일 경로. 생략하면 입력 파일과 같은 위치에 '원본파일명_note.확장자'로 저장"
+    )
     parser.add_argument("--flats", type=int, default=0, help="조표의 ♭ 개수 (곡 시작부터 적용되는 기본값)")
     parser.add_argument("--sharps", type=int, default=0, help="조표의 ♯ 개수 (곡 시작부터 적용되는 기본값)")
     parser.add_argument(
@@ -698,10 +725,19 @@ if __name__ == "__main__":
              "시스템 전역번호는 --key-map 없이 한 번 먼저 돌려서 나오는 "
              "'시스템=N개(전역 #A~B)' 로그로 확인한 뒤 지정한다."
     )
+    parser.add_argument(
+        "--lang", default="ko", choices=sorted(NOTE_NAMES.keys()),
+        help="계이름 표기 언어: ko(도레미, 기본) / solfege(Do Re Mi) / letter(C D E) / ja(ドレミ)"
+    )
+    parser.add_argument(
+        "--font-scale", type=float, default=1.0,
+        help="라벨 글자 크기 배율 (기본 1.0이 이미 기존 v2보다 큰 크기; 더 키우려면 1.2 등으로)"
+    )
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
+    output_path = args.output or default_output_path(args.input)
     key_map = parse_key_map(args.key_map) if args.key_map else {}
-    process(args.input, args.output, flats=args.flats, sharps=args.sharps, key_map=key_map,
-            dpi=args.dpi, debug=args.debug)
+    process(args.input, output_path, flats=args.flats, sharps=args.sharps, key_map=key_map,
+            lang=args.lang, font_scale=args.font_scale, dpi=args.dpi, debug=args.debug)
