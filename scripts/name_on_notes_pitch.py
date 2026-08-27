@@ -554,14 +554,19 @@ def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
     draw.text((tx, ty), text, fill=text_color, font=font)
 
 
-def rect_has_ink(binary, rect, threshold=0.12):
-    """사각형 영역 안에 원본 악보 잉크(음표/스템/빔/오선 등)가 얼마나 있는지 검사"""
+def rect_has_ink(binary, rect, min_dark_pixels=0):
+    """사각형 영역 안에 원본 악보 잉크(음표/운지번호/셋잇단음표 숫자/스템/빔/오선 등)가
+    있는지 검사. 비율(예: 12%) 기준은 라벨 박스가 크면 작은 숫자 기호 하나는
+    전체 면적 대비 비중이 작아서 안 걸리는 문제가 있었고, 절대 개수 기준(6px)도
+    라벨 가장자리에 숫자 끄트머리 몇 픽셀만 걸치는 경우는 여전히 놓쳐서 라벨이
+    숫자를 살짝 가리는 문제가 있었다. 기호를 아주 조금이라도 가리는 걸 원치
+    않으므로 어두운 픽셀이 하나라도 있으면 충돌로 본다."""
     x0, y0, x1, y1 = rect
     x0, y0 = max(0, int(x0)), max(0, int(y0))
     x1, y1 = min(binary.shape[1], int(x1)), min(binary.shape[0], int(y1))
     if x1 <= x0 or y1 <= y0:
         return False
-    return (binary[y0:y1, x0:x1] > 0).mean() > threshold
+    return int((binary[y0:y1, x0:x1] > 0).sum()) > min_dark_pixels
 
 
 def rects_overlap(a, b):
@@ -570,13 +575,23 @@ def rects_overlap(a, b):
     return not (ax1 <= bx0 or bx1 <= ax0 or ay1 <= by0 or by1 <= ay0)
 
 
+def rect_overlap_area(a, b):
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    ox = max(0, min(ax1, bx1) - max(ax0, bx0))
+    oy = max(0, min(ay1, by1) - max(ay0, by0))
+    return ox * oy
+
+
 def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_size, pad=2):
     """노트헤드 모양/원본 악보 기호를 라벨이 가리지 않도록 놓을 자리를 찾는다.
     1) 원래대로 노트헤드 바로 위부터 시작해서, 잉크(다른 기호)나 이미 놓인
        라벨과 겹치면 점점 더 위로 밀어낸다.
     2) 그래도 안 되면 아래쪽, 그다음 좌우를 시도한다.
-    3) 전부 실패하면(빽빽한 구간) 원래 기본 위치를 그대로 쓴다 — 라벨을
-       아예 안 그리는 것보다는 낫다."""
+    3) 완전히 안 겹치는 후보가 하나도 없으면(아주 빽빽한 화음 등), 그중
+       "겹침이 가장 적은" 후보를 쓴다. 예전에는 이럴 때 무조건 노트헤드
+       바로 위 고정 위치로 돌아갔는데, 그러면 겹치는 다른 라벨과 전혀
+       조율되지 않아서 두 라벨이 서로 겹쳐 그려지는 문제가 있었다."""
     bbox = draw.textbbox((0, 0), text, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     step = th + 2
@@ -590,18 +605,19 @@ def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_s
     candidates.append((x + r * 1.6, y - th / 2))                # 오른쪽
     candidates.append((x - r * 1.6 - tw, y - th / 2))           # 왼쪽
 
+    best_rect, best_score = None, None
     for tx, ty in candidates:
         rect = (tx - pad, ty - pad, tx + tw + pad, ty + th + pad)
-        if rect_has_ink(binary_full, rect):
-            continue
-        if any(rects_overlap(rect, pr) for pr in placed_rects):
-            continue
-        return tx + tw / 2, ty, rect
+        ink = rect_has_ink(binary_full, rect)
+        overlap = sum(rect_overlap_area(rect, pr) for pr in placed_rects)
+        if not ink and overlap == 0:
+            return tx + tw / 2, ty, rect
+        score = (1 if ink else 0, overlap)
+        if best_score is None or score < best_score:
+            best_score, best_rect = score, (tx, ty, rect)
 
-    # 전부 겹침 -> 기존 기본 위치(노트헤드 바로 위)로 폴백
-    tx, ty = x - tw / 2, y - base
-    rect = (tx - pad, ty - pad, tx + tw + pad, ty + th + pad)
-    return x, ty, rect
+    tx, ty, rect = best_rect
+    return tx + tw / 2, ty, rect
 
 
 def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
@@ -734,7 +750,10 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                 if chord is None:
                     continue
                 cx = (lo + hi) / 2
-                draw_label_with_bg(draw, cx, top_y, chord, chord_font, CHORD_COLOR)
+                lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, cx, top_y, 0,
+                                                 chord, chord_font, font_size)
+                draw_label_with_bg(draw, lx, ly, chord, chord_font, CHORD_COLOR)
+                placed_rects.append(lrect)
                 page_chords += 1
 
         total += page_matched
