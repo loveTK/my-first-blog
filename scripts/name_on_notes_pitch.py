@@ -783,6 +783,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
     out_pages = []
     total = 0
     unmatched = 0
+    first_audiveris_error = None
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (조표 맵 조회용 전역 순번 기준)
     workdir = tempfile.mkdtemp(prefix="notepitch_") if engine == 'audiveris' else None
 
@@ -845,6 +846,8 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                 av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
             except Exception as e:
                 print(f"  [{pi + 1}/{len(pages)}] Audiveris 실패: {e}")
+                if first_audiveris_error is None:
+                    first_audiveris_error = str(e)
             n_sys = min(len(av_systems), len(systems))
             if len(av_systems) != len(systems):
                 print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
@@ -1007,6 +1010,16 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
         sys_range = f"{global_sys_nums[0]}~{global_sys_nums[-1]}" if global_sys_nums else "-"
         print(f"  [{pi+1}/{len(pages)}] 오선간격={spacing}px, 시스템={len(systems)}개(전역 #{sys_range}), "
               f"음이름={page_matched}개")
+
+    if engine == 'audiveris' and total == 0:
+        # Audiveris가 모든 페이지에서 실패하면 이전엔 그냥 원본과 똑같은(라벨
+        # 하나도 없는) 파일을 조용히 돌려줬다 — 실패를 실패로 알리지 않는 게
+        # 더 나쁘다고 판단해 예외를 던지도록 바꿨다. 웹앱 쪽에서 이걸 잡아
+        # 사용자에게 실패 메시지로 보여준다.
+        detail = f" (원인: {first_audiveris_error})" if first_audiveris_error else ""
+        raise RuntimeError(
+            f"audiveris 엔진이 모든 페이지에서 실패했다 (음표 0개 검출){detail}"
+        )
 
     ext = os.path.splitext(output_path)[1].lower()
     if ext == ".pdf":
