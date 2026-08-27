@@ -142,12 +142,27 @@ def group_into_staves(line_centers):
 
 
 def group_into_systems(staves):
-    """스태프를 2개씩(높은음자리+낮은음자리) 묶어서 시스템으로 그룹핑"""
+    """스태프를 2개씩(높은음자리+낮은음자리) 묶어서 시스템으로 그룹핑.
+
+    그냥 순서대로 2개씩 묶으면, 스태프 하나가 통째로 검출에서 빠졌을 때
+    그 뒤 모든 스태프가 한 칸씩 밀려 서로 다른 시스템의 높은음자리/
+    낮은음자리끼리 잘못 묶인다 — 그러면 음이름이 조용히 다 틀어지는데,
+    이건 라벨이 아예 없는 것보다 훨씬 나쁘다(틀린 정보를 맞는 것처럼 보여줌).
+    같은 시스템 안 높은음자리-낮은음자리 간격은 시스템 간 간격보다 뚜렷이
+    좁으므로(실측: 줄간격의 4~7배 vs 9배 이상), 그 간격으로 실제로 붙어있는
+    스태프끼리만 묶는다. 다음 스태프와 안 붙어 있으면(간격이 너무 넓으면)
+    그 스태프는 짝을 잃은 것으로 보고 버린다."""
     systems = []
     i = 0
-    while i + 1 < len(staves):
-        systems.append({'treble': staves[i], 'bass': staves[i + 1]})
-        i += 2
+    n = len(staves)
+    while i + 1 < n:
+        spacing = (staves[i][-1] - staves[i][0]) / 4.0
+        gap = staves[i + 1][0] - staves[i][-1]
+        if spacing > 0 and gap / spacing <= 8.0:
+            systems.append({'treble': staves[i], 'bass': staves[i + 1]})
+            i += 2
+        else:
+            i += 1
     return systems
 
 
