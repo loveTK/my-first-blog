@@ -7,7 +7,8 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 
 음표 길이(리듬):
 - 스템 유무 + 노트헤드가 속이 찬지/빈지 + 스템 끝의 플래그(꼬리)/빔 존재 여부로
-  온음표/2분음표/4분음표/"8분음표 이하"를 라벨 옆에 (온)/(2)/없음/(8)로 표시한다.
+  온음표/2분음표/4분음표/"8분음표 이하"를 판별은 하지만, 기본값은 표시하지 않는다.
+  --show-duration을 줘야 라벨 옆에 (온)/(2)/없음/(8)로 표시한다.
 - 8분/16분/32분음표는 서로 구분하지 않고 전부 "(8)"로 뭉뚱그린다. 플래그 개수를
   세어 세분해보려 했으나, 이 해상도에서는 신뢰도가 떨어져(다른 기호 자동검출
   시도들과 동일한 문제) 포함하지 않았다.
@@ -638,7 +639,7 @@ def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_s
 
 
 def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
-            font_scale=1.0, label_style='smart', dpi=200, debug=False):
+            font_scale=1.0, label_style='smart', show_duration=False, dpi=200, debug=False):
     key_map = key_map or {}
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
@@ -746,7 +747,8 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             duration = classify_duration(binary_full, x, y, r, spacing, stem,
                                           is_hollow=(x, y, r) in hollow_set,
                                           staff_line_ys=lines)
-            label += DURATION_SUFFIX[duration]
+            if show_duration:
+                label += DURATION_SUFFIX[duration]
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             if label_style == 'overlay':
@@ -850,6 +852,10 @@ if __name__ == "__main__":
              "overlay(노트헤드 위치에 라벨을 그대로 겹쳐 씀) / "
              "lane(오선 바깥 클레프별 고정 레인에 일렬로 배치)"
     )
+    parser.add_argument(
+        "--show-duration", action="store_true",
+        help="온음표/2분음표/8분음표 이하 표시 (온)/(2)/(8)를 라벨에 덧붙인다. 기본은 끔"
+    )
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -858,4 +864,5 @@ if __name__ == "__main__":
     key_map = parse_key_map(args.key_map) if args.key_map else {}
     process(args.input, output_path, flats=args.flats, sharps=args.sharps, key_map=key_map,
             lang=args.lang, font_scale=args.font_scale, label_style=args.label_style,
+            show_duration=args.show_duration,
             dpi=args.dpi, debug=args.debug)
