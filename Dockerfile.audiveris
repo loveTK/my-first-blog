@@ -26,12 +26,16 @@ RUN mkdir -p /opt/audiveris \
 FROM eclipse-temurin:25-jre
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip poppler-utils fonts-nanum tesseract-ocr tesseract-ocr-eng \
+    python3 python3-pip poppler-utils fonts-nanum tesseract-ocr tesseract-ocr-eng libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=audiveris-build /opt/audiveris/dist /opt/audiveris/dist
 ENV AUDIVERIS_BIN=/opt/audiveris/dist/bin/Audiveris
 ENV AUDIVERIS_JAVA_HOME=$JAVA_HOME
+# 배포 서버엔 화면이 없다 — Swing 초기화가 그래도 GTK 네이티브 위젯을 찾아서
+# libgtk-3.so가 없으면 (또는 있어도 디스플레이가 없으면) 죽는다. headless를
+# 강제해서 애초에 그 경로를 안 타게 한다. (libgtk-3-0도 같이 깔아서 이중 방어.)
+ENV JAVA_TOOL_OPTIONS=-Djava.awt.headless=true
 
 # Audiveris는 실행 시 사용자 홈 아래 이 경로에서 OCR 언어 데이터를 찾는다.
 RUN mkdir -p /root/.config/AudiverisLtd/audiveris/tessdata \
