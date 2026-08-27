@@ -11,6 +11,12 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 - 8분/16분/32분음표는 서로 구분하지 않고 전부 "(8)"로 뭉뚱그린다. 플래그 개수를
   세어 세분해보려 했으나, 이 해상도에서는 신뢰도가 떨어져(다른 기호 자동검출
   시도들과 동일한 문제) 포함하지 않았다.
+- 화음(노트헤드 여러 개가 스템 하나를 공유)은 스템이 위/아래 양쪽으로 길게
+  이어지는데, 8분음표 플래그의 곡선이 만드는 가짜 구멍도 똑같은 모양이라 한때
+  이를 걸러내는 필터를 넣었었다. 그 필터가 화음의 가운데/아래쪽 음까지 통째로
+  지워버리는 게 더 심각한 문제라 필터 자체를 제거했다 — 그 결과 8분음표 이하의
+  플래그가 드물게 별도 노트헤드로 오검출될 수 있다(화음을 잃는 것보다는 나은
+  트레이드오프).
 
 한계 (v1):
 - 그랜드 스태프(피아노보) 전용: 각 시스템이 [높은음자리, 낮은음자리] 순서로 위→아래 배치된다고 가정
@@ -357,15 +363,6 @@ def find_stem(binary, x, y, r, spacing):
     return {'up': best_up, 'down': best_down}
 
 
-def is_mid_stem_artifact(stem, spacing):
-    """진짜 노트헤드는 스템이 한쪽 방향으로만 길게 뻗고 반대쪽은 타원 크기만큼만
-    짧다. 위/아래 둘 다 길면 실제로는 다른 음표의 스템이나 8분음표 이하의
-    플래그(꼬리) 한가운데에 찍힌 가짜 검출(예: 플래그의 곡선이 만든 작은 구멍이
-    '속 빈 노트헤드'로 오검출되는 경우)이다."""
-    threshold = spacing * 1.3
-    return stem['up'][0] > threshold and stem['down'][0] > threshold
-
-
 def classify_duration(binary, x, y, r, spacing, stem, is_hollow, staff_line_ys=()):
     """스템 유무 + 속이 찬/빈 노트헤드 + 스템 끝의 플래그(꼬리)/빔 존재 여부로
     음표 길이를 대략 분류한다.
@@ -587,17 +584,17 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             # 각 시스템의 음자리표+조표 구역은 제외
             noteheads = exclude_before_first_barline(noteheads, systems, img_np_full, spacing)
 
-        # 스템 정보를 미리 계산해두고, 다른 음표의 스템/플래그 한가운데를 잘못
-        # 짚은 가짜 검출은 걸러낸다
+        # 음표 길이 판별에 쓸 스템 정보를 미리 계산해둔다.
+        # (예전에는 여기서 "위/아래 둘 다 스템이 길게 이어지면 가짜"로 보고
+        # 걸러냈는데, 화음(여러 노트헤드가 스템 하나를 공유)의 가운데/아래쪽
+        # 노트헤드도 정확히 같은 모양이라 화음의 음이 통째로 사라지는 심각한
+        # 오탐이 발생했다. 8분음표 이하 플래그의 곡선이 이따금 별도 노트헤드로
+        # 오검출되는 문제보다 화음을 지우는 쪽이 훨씬 치명적이라 필터링 자체를
+        # 없앴다 — 폭 기준 재구분도 시도했으나 파일마다 spacing이 달라 화음과
+        # 플래그를 안정적으로 가르지 못했다.)
         note_stems = {}
-        filtered_noteheads = []
         for (x, y, r) in noteheads:
-            stem = find_stem(binary_full, x, y, r, spacing)
-            if is_mid_stem_artifact(stem, spacing):
-                continue
-            note_stems[(x, y, r)] = stem
-            filtered_noteheads.append((x, y, r))
-        noteheads = filtered_noteheads
+            note_stems[(x, y, r)] = find_stem(binary_full, x, y, r, spacing)
 
         img = page.convert("RGB").copy()
         draw = ImageDraw.Draw(img)
