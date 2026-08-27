@@ -554,6 +554,56 @@ def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
     draw.text((tx, ty), text, fill=text_color, font=font)
 
 
+def rect_has_ink(binary, rect, threshold=0.12):
+    """사각형 영역 안에 원본 악보 잉크(음표/스템/빔/오선 등)가 얼마나 있는지 검사"""
+    x0, y0, x1, y1 = rect
+    x0, y0 = max(0, int(x0)), max(0, int(y0))
+    x1, y1 = min(binary.shape[1], int(x1)), min(binary.shape[0], int(y1))
+    if x1 <= x0 or y1 <= y0:
+        return False
+    return (binary[y0:y1, x0:x1] > 0).mean() > threshold
+
+
+def rects_overlap(a, b):
+    ax0, ay0, ax1, ay1 = a
+    bx0, by0, bx1, by1 = b
+    return not (ax1 <= bx0 or bx1 <= ax0 or ay1 <= by0 or by1 <= ay0)
+
+
+def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_size, pad=2):
+    """노트헤드 모양/원본 악보 기호를 라벨이 가리지 않도록 놓을 자리를 찾는다.
+    1) 원래대로 노트헤드 바로 위부터 시작해서, 잉크(다른 기호)나 이미 놓인
+       라벨과 겹치면 점점 더 위로 밀어낸다.
+    2) 그래도 안 되면 아래쪽, 그다음 좌우를 시도한다.
+    3) 전부 실패하면(빽빽한 구간) 원래 기본 위치를 그대로 쓴다 — 라벨을
+       아예 안 그리는 것보다는 낫다."""
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    step = th + 2
+    base = r + font_size * 0.6
+
+    candidates = []  # (tx, ty) = 텍스트 좌상단 좌표
+    for i in range(5):
+        candidates.append((x - tw / 2, y - base - i * step))   # 점점 더 위로
+    for i in range(3):
+        candidates.append((x - tw / 2, y + base + i * step))   # 아래쪽
+    candidates.append((x + r * 1.6, y - th / 2))                # 오른쪽
+    candidates.append((x - r * 1.6 - tw, y - th / 2))           # 왼쪽
+
+    for tx, ty in candidates:
+        rect = (tx - pad, ty - pad, tx + tw + pad, ty + th + pad)
+        if rect_has_ink(binary_full, rect):
+            continue
+        if any(rects_overlap(rect, pr) for pr in placed_rects):
+            continue
+        return tx + tw / 2, ty, rect
+
+    # 전부 겹침 -> 기존 기본 위치(노트헤드 바로 위)로 폴백
+    tx, ty = x - tw / 2, y - base
+    rect = (tx - pad, ty - pad, tx + tw + pad, ty + th + pad)
+    return x, ty, rect
+
+
 def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             font_scale=1.0, dpi=200, debug=False):
     key_map = key_map or {}
@@ -601,6 +651,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
         font_size = max(10, int(spacing * 1.3 * font_scale))
         font = get_font(font_size)
         chord_font = get_font(int(font_size * 1.05))
+        placed_rects = []  # 이 페이지에 그린 라벨 사각형들 (겹침 방지용)
 
         # 시스템별 마디(바라인) 구간 미리 계산 + 코드 추정을 위한 피치클래스 수집 버킷
         system_measures = []       # [[ (x_left,x_right), ... ], ...]  시스템별 마디 리스트
@@ -658,7 +709,10 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             label += DURATION_SUFFIX[duration]
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
-            draw_label_with_bg(draw, x, y - r - font_size * 1.5, label, font, color)
+            lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, x, y, r,
+                                             label, font, font_size)
+            draw_label_with_bg(draw, lx, ly, label, font, color)
+            placed_rects.append(lrect)
             if debug:
                 draw.ellipse([x - 2, y - 2, x + 2, y + 2], fill=(0, 120, 255))
 
