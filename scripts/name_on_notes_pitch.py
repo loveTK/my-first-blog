@@ -621,7 +621,7 @@ def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_s
 
 
 def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
-            font_scale=1.0, dpi=200, debug=False):
+            font_scale=1.0, label_style='smart', dpi=200, debug=False):
     key_map = key_map or {}
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
@@ -692,6 +692,13 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                     return mi
             return len(system_measures[sys_idx]) - 1 if system_measures[sys_idx] else None
 
+        # label_style='lane'용: 시스템마다 클레프별 고정 레인 y좌표
+        # (높은음자리 레인은 시스템 맨 위보다 더 위, 낮은음자리 레인은 맨 아래보다 더 아래)
+        system_lane_ys = [
+            {'treble': sysm['treble'][0] - spacing * 4.5, 'bass': sysm['bass'][-1] + spacing * 3.5}
+            for sysm in systems
+        ]
+
         # ---- 1차: 음이름 계산 + 라벨 그리기 + 코드용 피치클래스 수집 ----
         page_matched = 0
         note_records = []
@@ -725,10 +732,24 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             label += DURATION_SUFFIX[duration]
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
-            lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, x, y, r,
-                                             label, font, font_size)
-            draw_label_with_bg(draw, lx, ly, label, font, color)
-            placed_rects.append(lrect)
+            if label_style == 'overlay':
+                # 2) 노트헤드 위치에 라벨을 그대로 겹쳐 쓴다 (원 모양/위치와 정확히 일치)
+                bbox = draw.textbbox((0, 0), label, font=font)
+                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                lx, ly = x, y - th / 2
+                draw_label_with_bg(draw, lx, ly, label, font, color)
+            elif label_style == 'lane':
+                # 3) 오선 바깥 고정 레인(클레프별 한 줄)에 x만 노트에 맞춰 배치
+                lane_y = system_lane_ys[best_sys_idx][clef]
+                lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, x, lane_y, 0,
+                                                 label, font, font_size)
+                draw_label_with_bg(draw, lx, ly, label, font, color)
+                placed_rects.append(lrect)
+            else:  # 'smart' (기본, 1+2 조합)
+                lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, x, y, r,
+                                                 label, font, font_size)
+                draw_label_with_bg(draw, lx, ly, label, font, color)
+                placed_rects.append(lrect)
             if debug:
                 draw.ellipse([x - 2, y - 2, x + 2, y + 2], fill=(0, 120, 255))
 
@@ -803,6 +824,12 @@ if __name__ == "__main__":
         "--font-scale", type=float, default=1.0,
         help="라벨 글자 크기 배율 (기본 1.0이 이미 기존 v2보다 큰 크기; 더 키우려면 1.2 등으로)"
     )
+    parser.add_argument(
+        "--label-style", default="smart", choices=["smart", "overlay", "lane"],
+        help="라벨 배치 방식: smart(기본, 빈 공간 탐색+겹침 최소화) / "
+             "overlay(노트헤드 위치에 라벨을 그대로 겹쳐 씀) / "
+             "lane(오선 바깥 클레프별 고정 레인에 일렬로 배치)"
+    )
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -810,4 +837,5 @@ if __name__ == "__main__":
     output_path = args.output or default_output_path(args.input)
     key_map = parse_key_map(args.key_map) if args.key_map else {}
     process(args.input, output_path, flats=args.flats, sharps=args.sharps, key_map=key_map,
-            lang=args.lang, font_scale=args.font_scale, dpi=args.dpi, debug=args.debug)
+            lang=args.lang, font_scale=args.font_scale, label_style=args.label_style,
+            dpi=args.dpi, debug=args.debug)
