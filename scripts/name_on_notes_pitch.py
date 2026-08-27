@@ -549,9 +549,15 @@ def run_audiveris_export(img, workdir, name="page"):
     result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
     mxl_path = os.path.join(out_dir, f"{name}.mxl")
     if not os.path.exists(mxl_path):
+        combined = result.stdout + "\n" + result.stderr
+        # 자바 예외 메시지 앞부분(클래스패스 나열 등)이 아주 길 때가 있어서
+        # 그냥 끝에서 N글자만 자르면 정작 중요한 "Caused by:" 줄이 잘려
+        # 나가는 경우가 있었다. "Caused by"/"Error"가 있는 줄들을 우선
+        # 모아서 보여주고, 없으면 그냥 끝부분을 보여준다.
+        cause_lines = [ln for ln in combined.splitlines() if "Caused by" in ln or "Error" in ln]
+        detail = "\n".join(cause_lines[-20:]) if cause_lines else combined[-3000:]
         raise RuntimeError(
-            f"Audiveris 실행 실패 (returncode={result.returncode}):\n"
-            f"{result.stdout[-1500:]}\n{result.stderr[-1500:]}"
+            f"Audiveris 실행 실패 (returncode={result.returncode}):\n{detail}"
         )
     return mxl_path
 
