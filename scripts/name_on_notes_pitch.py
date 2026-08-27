@@ -33,6 +33,22 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
   (실제 누락된 꾸밈음보다 오탐이 더 많음) 폐기 — 단 한 줄에 1~3개 정도 발생하는
   수준으로 드묾
 
+엔진(--engine):
+- cv(기본): 이 파일 자체의 OpenCV 노트헤드 검출 + 오선 위치 기반 음이름 계산.
+  꾸밈음 누락, 조표 수동 지정 필요 등 위 한계를 그대로 가짐.
+- audiveris: 실제 OMR 엔진인 Audiveris(별도 설치 필요, AUDIVERIS_BIN 참고)로
+  음표를 검출해 MusicXML로 뽑아낸 뒤, 그 피치/박자/조표 정보를 이 스크립트의
+  라벨 배치 로직에 그대로 얹는다. cv 엔진의 약점이던 꾸밈음 누락, 조표 자동
+  미검출, 낱개 임시표 미반영이 모두 해결됨(smallHeads 스위치를 켜서 꾸밈음도
+  검출, 조표는 Audiveris가 마디마다 인식한 <fifths> 값을 그대로 사용, 임시표는
+  Audiveris가 계산한 <alter> 값을 그대로 사용). 단, 노트헤드의 화면 좌표 자체는
+  Audiveris가 아니라 이 스크립트가 직접 검출한 오선/마디 위치 + 음이름을 오선
+  상 위치로 역산해서 계산한다(Audiveris 좌표계를 그대로 못 믿어서가 아니라,
+  라벨 배치용 좌표계를 cv 엔진과 통일하기 위함). 한 마디 안에 여러 성부가
+  겹치는 경우 시간축(divisions) 기준으로 x를 보간하므로 얼추 맞지만 완벽하진
+  않음. --flats/--sharps/--key-map은 audiveris 엔진에서는 무시된다(조표를
+  Audiveris가 직접 인식하므로).
+
 계이름 언어(--lang):
 - ko(기본): 도레미파솔라시 / solfege: Do Re Mi Fa Sol La Si / letter: C D E F G A B
 - ja: ド レ ミ ファ ソ ラ シ (일본어 가타카나 솔페이지)
@@ -52,6 +68,10 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 import argparse
 import functools
 import os
+import subprocess
+import tempfile
+import xml.etree.ElementTree as ET
+import zipfile
 
 import cv2
 import numpy as np
@@ -413,15 +433,20 @@ DURATION_SUFFIX = {'whole': '(온)', 'half': '(2)', 'quarter': '', 'short': '(8)
 
 # ---------- 노트헤드 검출 (v1과 동일) ----------
 
+def guess_staff_spacing(line_centers):
+    """검출된 오선 중심좌표들의 간격(줄 간격) 중앙값을 추정한다."""
+    diffs = np.diff(line_centers) if len(line_centers) > 1 else [14]
+    small = [d for d in diffs if d < np.median(diffs) * 2.5] if len(diffs) else [14]
+    return max(4, int(np.median(small))) if small else 14
+
+
 def detect_noteheads(pil_img, staff_spacing=None):
     img_np = np.array(pil_img.convert("L"))
     _, binary = cv2.threshold(img_np, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     line_centers = detect_staff_lines(img_np)
     if staff_spacing is None:
-        diffs = np.diff(line_centers) if len(line_centers) > 1 else [14]
-        small = [d for d in diffs if d < np.median(diffs) * 2.5] if len(diffs) else [14]
-        staff_spacing = max(4, int(np.median(small))) if small else 14
+        staff_spacing = guess_staff_spacing(line_centers)
 
     nh_h = max(3, int(round(staff_spacing * 0.85)))
     nh_w = max(3, int(round(staff_spacing * 1.05)))
@@ -513,6 +538,173 @@ def detect_hollow_noteheads(binary, nh_w, nh_h):
         clusters.append((int(cx), int(cy), int(max(cw, ch) / 2)))
 
     return clusters
+
+
+# ---------- Audiveris 엔진 연동 ----------
+
+AUDIVERIS_BIN = os.environ.get(
+    "AUDIVERIS_BIN", "/home/user/audiveris/dist/app-5.11.0/bin/Audiveris"
+)
+AUDIVERIS_JAVA_HOME = os.environ.get(
+    "AUDIVERIS_JAVA_HOME", "/usr/lib/jvm/java-25-openjdk-amd64"
+)
+AUDIVERIS_MAX_PIXELS = 19_500_000  # Audiveris 자체 상한(2000만)보다 약간 여유
+
+
+def ensure_max_pixels(img, max_px=AUDIVERIS_MAX_PIXELS):
+    """Audiveris는 너무 큰 이미지를 거부하므로(2000만 픽셀), 넘으면 비율 유지 축소."""
+    if img.width * img.height <= max_px:
+        return img
+    scale = (max_px / (img.width * img.height)) ** 0.5
+    return img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
+
+
+def run_audiveris_export(img, workdir, name="page"):
+    """페이지 이미지를 Audiveris(-batch -export, smallHeads 스위치 켬)로 돌려서
+    MusicXML(.mxl) 경로를 반환한다. smallHeads를 켜야 꾸밈음(그레이스 노트)도
+    노트헤드로 잡힌다(기본은 꺼져 있어서 CUE_BEAMS 단계가 통째로 스킵됨)."""
+    png_path = os.path.join(workdir, f"{name}.png")
+    ensure_max_pixels(img).save(png_path)
+
+    env = dict(os.environ)
+    env["JAVA_HOME"] = AUDIVERIS_JAVA_HOME
+    env["PATH"] = f"{AUDIVERIS_JAVA_HOME}/bin:" + env.get("PATH", "")
+
+    out_dir = os.path.join(workdir, "audiveris_out")
+    os.makedirs(out_dir, exist_ok=True)
+    cmd = [
+        AUDIVERIS_BIN, "-batch", "-export",
+        "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
+        "-output", out_dir, png_path,
+    ]
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
+    mxl_path = os.path.join(out_dir, f"{name}.mxl")
+    if not os.path.exists(mxl_path):
+        raise RuntimeError(
+            f"Audiveris 실행 실패 (returncode={result.returncode}):\n"
+            f"{result.stdout[-1500:]}\n{result.stderr[-1500:]}"
+        )
+    return mxl_path
+
+
+def parse_audiveris_mxl(mxl_path):
+    """Audiveris가 만든 .mxl에서 시스템별 -> 마디별 음표 목록을 뽑아낸다.
+    악보 상의 x/y 좌표는 쓰지 않는다(이 스크립트가 직접 검출한 오선/마디 좌표계로
+    다시 배치할 것이므로). 대신 각 음표의 마디 내 발음 시점(divisions 단위)을
+    구해두면, 그 마디의 픽셀 폭 안에서 비율로 x를 보간할 수 있다 — <backup>/
+    <forward>를 반영해서 계산하므로 성부가 여러 개라도 겹치는 시점끼리는 겹치는
+    x 근방에 놓인다.
+    반환: (systems, clef_of_staff)
+      systems = [ [ [note_dict, ...] (마디), ... ] (시스템), ... ]
+      clef_of_staff = {스태프번호: 'treble'|'bass'}"""
+    with zipfile.ZipFile(mxl_path) as zf:
+        xml_name = next(n for n in zf.namelist() if n.endswith(".xml") and "META-INF" not in n)
+        root = ET.fromstring(zf.read(xml_name))
+
+    part = root.find("part")
+    if part is None:
+        return [], {}
+
+    clef_of_staff = {}
+    systems = []
+    cur_system = None
+    current_fifths = 0
+
+    for measure in part.findall("measure"):
+        print_el = measure.find("print")
+        is_new_system = (
+            cur_system is None
+            or (print_el is not None and print_el.get("new-system") == "yes")
+        )
+        if is_new_system:
+            cur_system = []
+            systems.append(cur_system)
+
+        attrs = measure.find("attributes")
+        if attrs is not None:
+            key_el = attrs.find("key")
+            if key_el is not None:
+                current_fifths = int(key_el.findtext("fifths", "0"))
+            for clef_el in attrs.findall("clef"):
+                num = int(clef_el.get("number", "1"))
+                sign = clef_el.findtext("sign", "G")
+                clef_of_staff[num] = "treble" if sign == "G" else "bass"
+
+        cursor = 0
+        measure_total = 0
+        measure_notes = []
+        for child in measure:
+            if child.tag == "note":
+                is_chord = child.find("chord") is not None
+                is_grace = child.find("grace") is not None
+                dur = int(child.findtext("duration", "0"))
+                staff = int(child.findtext("staff", "1"))
+                pitch_el = child.find("pitch")
+                note_type = child.findtext("type")
+                start_time = cursor
+                if pitch_el is not None:
+                    measure_notes.append({
+                        "start": start_time,
+                        "staff": staff,
+                        "letter": pitch_el.findtext("step"),
+                        "octave": int(pitch_el.findtext("octave")),
+                        "alter": int(pitch_el.findtext("alter", "0")),
+                        "is_grace": is_grace,
+                        "type": note_type,
+                        "fifths": current_fifths,
+                    })
+                if not is_chord and not is_grace:
+                    cursor += dur
+                    measure_total = max(measure_total, cursor)
+            elif child.tag == "backup":
+                cursor -= int(child.findtext("duration", "0"))
+            elif child.tag == "forward":
+                cursor += int(child.findtext("duration", "0"))
+                measure_total = max(measure_total, cursor)
+
+        for n in measure_notes:
+            n["measure_total"] = max(measure_total, 1)
+        cur_system.append(measure_notes)
+
+    if not clef_of_staff:
+        clef_of_staff = {1: "treble", 2: "bass"}
+    return systems, clef_of_staff
+
+
+def note_to_y(letter, octave, staff_lines, clef):
+    """y_to_note()의 역함수: 음이름+옥타브를 오선 위 y 픽셀 좌표로 되돌린다."""
+    spacing = (staff_lines[-1] - staff_lines[0]) / 4.0
+    half = spacing / 2.0
+    bottom_line_y = staff_lines[-1]
+    idx = LETTERS_ASC.index(letter)
+    step0_letter, step0_octave = ('E', 4) if clef == 'treble' else ('G', 2)
+    idx0 = LETTERS_ASC.index(step0_letter)
+    total = (octave - step0_octave) * 7 + idx
+    step = total - idx0
+    return bottom_line_y - step * half
+
+
+def letter_alter_to_semitone(letter, alter):
+    return (NATURAL_SEMITONE[letter] + alter) % 12
+
+
+ALTER_SUFFIX = {-2: '♭♭', -1: '♭', 0: '', 1: '♯', 2: '♯♯'}
+
+
+def audiveris_label(letter, alter, lang):
+    """Audiveris가 알려준 실제 alter(그 음표 하나에 실제로 적용된 반음표)로
+    라벨을 만든다 — 조표뿐 아니라 낱개 임시표까지 반영되므로 cv 엔진보다 정확."""
+    return NOTE_NAMES[lang][letter] + ALTER_SUFFIX.get(alter, '')
+
+
+def fifths_to_flats_sharps(fifths):
+    return (-fifths, 0) if fifths < 0 else (0, fifths)
+
+
+AUDIVERIS_DURATION_SUFFIX = {
+    'whole': '(온)', 'half': '(2)', 'quarter': '',
+    'eighth': '(8)', '16th': '(16)', '32nd': '(32)', '64th': '(64)',
+}
 
 
 # ---------- 라벨 그리기 ----------
@@ -629,7 +821,8 @@ def find_label_spot(draw, binary_full, placed_rects, x, y, r, text, font, font_s
 
 
 def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
-            font_scale=1.0, label_style='smart', show_duration=False, dpi=200, debug=False):
+            font_scale=1.0, label_style='smart', show_duration=False, dpi=200, debug=False,
+            engine='cv'):
     key_map = key_map or {}
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
@@ -637,38 +830,49 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
     unmatched = 0
     total_chords = 0
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (조표 맵 조회용 전역 순번 기준)
+    workdir = tempfile.mkdtemp(prefix="notepitch_") if engine == 'audiveris' else None
 
     for pi, page in enumerate(pages):
-        noteheads, spacing, line_centers, hollow_set = detect_noteheads(page)
-        staves = group_into_staves(line_centers)
-        systems = group_into_systems(staves)
-        img_np_full = np.array(page.convert("L"))
-        _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        if engine == 'audiveris':
+            img_np_full = np.array(page.convert("L"))
+            _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            line_centers = detect_staff_lines(img_np_full)
+            spacing = guess_staff_spacing(line_centers)
+            staves = group_into_staves(line_centers)
+            systems = group_into_systems(staves)
+            noteheads, hollow_set, note_stems = [], set(), {}
+        else:
+            noteheads, spacing, line_centers, hollow_set = detect_noteheads(page)
+            staves = group_into_staves(line_centers)
+            systems = group_into_systems(staves)
+            img_np_full = np.array(page.convert("L"))
+            _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
         # 이 페이지의 각 시스템(페이지 로컬 인덱스)에 대응하는 문서 전체 기준 전역 순번(1부터)
         global_sys_nums = [global_sys_offset + i + 1 for i in range(len(systems))]
 
-        # 오선 시스템에서 너무 멀리 떨어진 검출(제목/텍스트 등 오탐)은 제외
-        if systems:
-            margin = spacing * 6  # 레저 라인 여유
-            valid_ranges = [(s['treble'][0] - margin, s['bass'][-1] + margin) for s in systems]
-            noteheads = [
-                nh for nh in noteheads
-                if any(lo <= nh[1] <= hi for (lo, hi) in valid_ranges)
-            ]
-            # 각 시스템의 음자리표+조표 구역은 제외
-            noteheads = exclude_before_first_barline(noteheads, systems, img_np_full, spacing)
+        if engine == 'cv':
+            # 오선 시스템에서 너무 멀리 떨어진 검출(제목/텍스트 등 오탐)은 제외
+            if systems:
+                margin = spacing * 6  # 레저 라인 여유
+                valid_ranges = [(s['treble'][0] - margin, s['bass'][-1] + margin) for s in systems]
+                noteheads = [
+                    nh for nh in noteheads
+                    if any(lo <= nh[1] <= hi for (lo, hi) in valid_ranges)
+                ]
+                # 각 시스템의 음자리표+조표 구역은 제외
+                noteheads = exclude_before_first_barline(noteheads, systems, img_np_full, spacing)
 
-        # 음표 길이 판별에 쓸 스템 정보를 미리 계산해둔다.
-        # (예전에는 여기서 "위/아래 둘 다 스템이 길게 이어지면 가짜"로 보고
-        # 걸러냈는데, 화음(여러 노트헤드가 스템 하나를 공유)의 가운데/아래쪽
-        # 노트헤드도 정확히 같은 모양이라 화음의 음이 통째로 사라지는 심각한
-        # 오탐이 발생했다. 8분음표 이하 플래그의 곡선이 이따금 별도 노트헤드로
-        # 오검출되는 문제보다 화음을 지우는 쪽이 훨씬 치명적이라 필터링 자체를
-        # 없앴다 — 폭 기준 재구분도 시도했으나 파일마다 spacing이 달라 화음과
-        # 플래그를 안정적으로 가르지 못했다.)
-        note_stems = {}
-        for (x, y, r) in noteheads:
-            note_stems[(x, y, r)] = find_stem(binary_full, x, y, r, spacing)
+            # 음표 길이 판별에 쓸 스템 정보를 미리 계산해둔다.
+            # (예전에는 여기서 "위/아래 둘 다 스템이 길게 이어지면 가짜"로 보고
+            # 걸러냈는데, 화음(여러 노트헤드가 스템 하나를 공유)의 가운데/아래쪽
+            # 노트헤드도 정확히 같은 모양이라 화음의 음이 통째로 사라지는 심각한
+            # 오탐이 발생했다. 8분음표 이하 플래그의 곡선이 이따금 별도 노트헤드로
+            # 오검출되는 문제보다 화음을 지우는 쪽이 훨씬 치명적이라 필터링 자체를
+            # 없앴다 — 폭 기준 재구분도 시도했으나 파일마다 spacing이 달라 화음과
+            # 플래그를 안정적으로 가르지 못했다.)
+            for (x, y, r) in noteheads:
+                note_stems[(x, y, r)] = find_stem(binary_full, x, y, r, spacing)
 
         img = page.convert("RGB").copy()
         draw = ImageDraw.Draw(img)
@@ -707,38 +911,96 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             for sysm in systems
         ]
 
+        # ---- audiveris 엔진: Audiveris로 음표(피치/박자/조표)를 뽑아서
+        # 이 스크립트의 오선/마디 좌표계 위에 (x, y)로 다시 배치한다 ----
+        audiveris_notes = []
+        system_fifths = [0] * len(systems)
+        if engine == 'audiveris':
+            try:
+                mxl_path = run_audiveris_export(page, workdir, name=f"p{pi + 1}")
+                av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
+            except Exception as e:
+                print(f"  [{pi + 1}/{len(pages)}] Audiveris 실패: {e}")
+                av_systems, clef_of_staff = [], {}
+
+            n_sys = min(len(av_systems), len(systems))
+            if len(av_systems) != len(systems):
+                print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
+                      f"자체 검출 시스템 수({len(systems)}) — 앞쪽 {n_sys}개만 매칭")
+            for si in range(n_sys):
+                av_measures = av_systems[si]
+                own_measures = system_measures[si]
+                n_meas = min(len(av_measures), len(own_measures))
+                if av_measures and av_measures[0]:
+                    system_fifths[si] = av_measures[0][0].get('fifths', 0)
+                for mi in range(n_meas):
+                    lo, hi = own_measures[mi]
+                    pad = (hi - lo) * 0.08
+                    lo2, hi2 = lo + pad, hi - pad
+                    grace_seen = {}
+                    for n in av_measures[mi]:
+                        clef = clef_of_staff.get(n['staff'], 'treble' if n['staff'] == 1 else 'bass')
+                        lines = systems[si]['treble'] if clef == 'treble' else systems[si]['bass']
+                        y = note_to_y(n['letter'], n['octave'], lines, clef)
+                        frac = n['start'] / n['measure_total'] if n['measure_total'] else 0
+                        x = lo2 + frac * (hi2 - lo2)
+                        if n['is_grace']:
+                            k = grace_seen.get((n['staff'], n['start']), 0)
+                            grace_seen[(n['staff'], n['start'])] = k + 1
+                            x -= (k + 1) * spacing * 0.9
+                        r = max(3, int(round(spacing * 0.5)))
+                        audiveris_notes.append({
+                            'x': int(x), 'y': int(y), 'r': r, 'sys_idx': si, 'clef': clef,
+                            'letter': n['letter'], 'octave': n['octave'], 'alter': n['alter'],
+                            'type': n['type'],
+                        })
+
         # ---- 1차: 음이름 계산 + 라벨 그리기 + 코드용 피치클래스 수집 ----
         page_matched = 0
         note_records = []
-        for (x, y, r) in noteheads:
-            best_sys_idx, best_dist = None, 1e9
-            for si, sysm in enumerate(systems):
-                mid = (sysm['treble'][0] + sysm['bass'][-1]) / 2
-                d = abs(y - mid)
-                if d < best_dist:
-                    best_dist, best_sys_idx = d, si
-            if best_sys_idx is None:
-                unmatched += 1
-                continue
-            sysm = systems[best_sys_idx]
+        note_source = audiveris_notes if engine == 'audiveris' else (
+            {'x': x, 'y': y, 'r': r} for (x, y, r) in noteheads
+        )
+        for item in note_source:
+            x, y, r = item['x'], item['y'], item['r']
 
-            treble_mid = (sysm['treble'][0] + sysm['treble'][-1]) / 2
-            bass_mid = (sysm['bass'][0] + sysm['bass'][-1]) / 2
-            if abs(y - treble_mid) <= abs(y - bass_mid):
-                clef, lines = 'treble', sysm['treble']
+            if engine == 'audiveris':
+                best_sys_idx = item['sys_idx']
+                clef = item['clef']
+                letter, octave, alter = item['letter'], item['octave'], item['alter']
+                label = audiveris_label(letter, alter, lang)
+                dur_key = item['type'] if item['type'] in AUDIVERIS_DURATION_SUFFIX else 'quarter'
+                if show_duration:
+                    label += AUDIVERIS_DURATION_SUFFIX.get(dur_key, '')
             else:
-                clef, lines = 'bass', sysm['bass']
+                best_sys_idx, best_dist = None, 1e9
+                for si, sysm in enumerate(systems):
+                    mid = (sysm['treble'][0] + sysm['bass'][-1]) / 2
+                    d = abs(y - mid)
+                    if d < best_dist:
+                        best_dist, best_sys_idx = d, si
+                if best_sys_idx is None:
+                    unmatched += 1
+                    continue
+                sysm = systems[best_sys_idx]
 
-            sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[best_sys_idx])
+                treble_mid = (sysm['treble'][0] + sysm['treble'][-1]) / 2
+                bass_mid = (sysm['bass'][0] + sysm['bass'][-1]) / 2
+                if abs(y - treble_mid) <= abs(y - bass_mid):
+                    clef, lines = 'treble', sysm['treble']
+                else:
+                    clef, lines = 'bass', sysm['bass']
 
-            letter, octave = y_to_note(y, lines, clef)
-            label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps, lang=lang)
-            stem = note_stems.get((x, y, r)) or find_stem(binary_full, x, y, r, spacing)
-            duration = classify_duration(binary_full, x, y, r, spacing, stem,
-                                          is_hollow=(x, y, r) in hollow_set,
-                                          staff_line_ys=lines)
-            if show_duration:
-                label += DURATION_SUFFIX[duration]
+                sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[best_sys_idx])
+
+                letter, octave = y_to_note(y, lines, clef)
+                label = apply_key_signature(letter, flats=sys_flats, sharps=sys_sharps, lang=lang)
+                stem = note_stems.get((x, y, r)) or find_stem(binary_full, x, y, r, spacing)
+                duration = classify_duration(binary_full, x, y, r, spacing, stem,
+                                              is_hollow=(x, y, r) in hollow_set,
+                                              staff_line_ys=lines)
+                if show_duration:
+                    label += DURATION_SUFFIX[duration]
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             if label_style == 'overlay':
@@ -769,13 +1031,19 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
 
             mi = find_measure_idx(best_sys_idx, x)
             if mi is not None:
-                st = letter_to_semitone(letter, flats=sys_flats, sharps=sys_sharps)
+                if engine == 'audiveris':
+                    st = letter_alter_to_semitone(letter, alter)
+                else:
+                    st = letter_to_semitone(letter, flats=sys_flats, sharps=sys_sharps)
                 measure_pitch_sets[best_sys_idx][mi].add(st)
 
         # ---- 2차: 마디별 코드 추정 + 표시 (참고용 근사치) ----
         page_chords = 0
         for si, sysm in enumerate(systems):
-            sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[si])
+            if engine == 'audiveris':
+                sys_flats, sys_sharps = fifths_to_flats_sharps(system_fifths[si])
+            else:
+                sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[si])
             top_y = sysm['treble'][0] - spacing * 2.6
             for mi, (lo, hi) in enumerate(system_measures[si]):
                 pcs = measure_pitch_sets[si][mi]
@@ -846,6 +1114,12 @@ if __name__ == "__main__":
         "--show-duration", action="store_true",
         help="온음표/2분음표/8분음표 이하 표시 (온)/(2)/(8)를 라벨에 덧붙인다. 기본은 끔"
     )
+    parser.add_argument(
+        "--engine", default="cv", choices=["cv", "audiveris"],
+        help="음표 검출 엔진: cv(기본, 자체 OpenCV 검출) / "
+             "audiveris(실제 OMR 엔진 Audiveris로 검출 — 꾸밈음/조표/낱개 임시표까지 반영, "
+             "--flats/--sharps/--key-map은 무시됨)"
+    )
     parser.add_argument("--dpi", type=int, default=200)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -855,4 +1129,4 @@ if __name__ == "__main__":
     process(args.input, output_path, flats=args.flats, sharps=args.sharps, key_map=key_map,
             lang=args.lang, font_scale=args.font_scale, label_style=args.label_style,
             show_duration=args.show_duration,
-            dpi=args.dpi, debug=args.debug)
+            dpi=args.dpi, debug=args.debug, engine=args.engine)
