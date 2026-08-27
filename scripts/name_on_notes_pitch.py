@@ -43,6 +43,7 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 """
 
 import argparse
+import functools
 import os
 
 import cv2
@@ -525,6 +526,7 @@ def detect_hollow_noteheads(binary, nh_w, nh_h):
 
 # ---------- 라벨 그리기 ----------
 
+@functools.lru_cache(maxsize=None)
 def get_font(size):
     candidates = [
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
@@ -535,6 +537,21 @@ def get_font(size):
         if os.path.exists(path):
             return ImageFont.truetype(path, size)
     return ImageFont.load_default()
+
+
+def fit_font_to_diameter(draw, text, diameter, max_size, min_size=6):
+    """text가 지름 diameter인 원 안에 들어가도록 폰트 크기를 max_size부터
+    줄여가며 찾는다 (overlay 모드: 라벨을 노트헤드 크기에 정확히 맞추기 위함)."""
+    size = max_size
+    font = get_font(size)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    while size > min_size and (tw > diameter or th > diameter):
+        size -= 1
+        font = get_font(size)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    return font, tw, th
 
 
 TREBLE_COLOR = (200, 30, 30)   # 빨강
@@ -733,11 +750,14 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             if label_style == 'overlay':
-                # 2) 노트헤드 위치에 라벨을 그대로 겹쳐 쓴다 (원 모양/위치와 정확히 일치)
-                bbox = draw.textbbox((0, 0), label, font=font)
-                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                # 2) 노트헤드 원과 정확히 같은 크기/위치에 라벨을 겹쳐 쓴다.
+                # 고정 폰트 크기를 그대로 쓰면 글자가 원보다 커서 옆 음표의
+                # 라벨과 겹쳤다 — 노트헤드 지름 안에 들어가도록 글자 크기를
+                # 그때그때 줄인다.
+                diameter = 2 * r
+                fit_font, tw, th = fit_font_to_diameter(draw, label, diameter, font_size)
                 lx, ly = x, y - th / 2
-                draw_label_with_bg(draw, lx, ly, label, font, color)
+                draw_label_with_bg(draw, lx, ly, label, fit_font, color, pad=0)
             elif label_style == 'lane':
                 # 3) 오선 바깥 고정 레인(클레프별 한 줄)에 x만 노트에 맞춰 배치
                 lane_y = system_lane_ys[best_sys_idx][clef]
