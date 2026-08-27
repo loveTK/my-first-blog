@@ -1,7 +1,6 @@
-# cv 엔진만 쓰는 배포는 Dockerfile 하나로 충분하지만, --engine audiveris는
-# Audiveris(자바 OMR 엔진)를 소스에서 직접 빌드해 넣어야 해서 별도 파일로 뺐다.
+# Audiveris(자바 OMR 엔진)를 소스에서 직접 빌드해 넣는 배포용 이미지.
 # 이 이미지로 배포하면 서버가 Audiveris까지 갖추고 있어서, 로컬(사용자 PC)엔
-# Java/Audiveris를 하나도 안 깔아도 웹 폼에서 engine=audiveris를 바로 쓸 수 있다.
+# Java/Audiveris를 하나도 안 깔아도 웹 폼을 바로 쓸 수 있다.
 
 FROM eclipse-temurin:25-jdk AS audiveris-build
 

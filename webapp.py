@@ -3,7 +3,7 @@ name_on_notes_pitch.py 를 웹앱으로 감싼 것.
 악보(PDF/JPG/PNG) 업로드 -> process() 그대로 실행 -> 결과 파일 다운로드.
 
 실행: python3 webapp.py  (기본 0.0.0.0:5000)
-audiveris 엔진을 쓰려면 서버에 Audiveris/JDK25가 설치되어 있어야 한다
+서버에 Audiveris/JDK25가 설치되어 있어야 한다
 (scripts/name_on_notes_pitch.py 상단 AUDIVERIS_BIN/AUDIVERIS_JAVA_HOME 참고).
 """
 
@@ -31,17 +31,9 @@ button{margin-top:20px;padding:10px 20px}
 <h2>악보 계이름 자동 삽입</h2>
 <form method="post" action="/process" enctype="multipart/form-data">
   <label>악보 파일 (PDF/JPG/PNG)<input type="file" name="input" required></label>
-  <label>엔진
-    <select name="engine">
-      <option value="cv">cv (자체 검출, 조표 직접 지정 필요)</option>
-      <option value="audiveris">audiveris (Audiveris 엔진, 조표 자동)</option>
-    </select>
-  </label>
   <label>계이름 언어
     <select name="lang">{lang_options}</select>
   </label>
-  <label>♭ 개수 (cv 엔진용)<input type="number" name="flats" value="0" min="0" max="7"></label>
-  <label>♯ 개수 (cv 엔진용)<input type="number" name="sharps" value="0" min="0" max="7"></label>
   <label>라벨 배치
     <select name="label_style">
       <option value="smart">smart</option>
@@ -75,12 +67,9 @@ def do_process():
     try:
         process(
             in_path, out_path,
-            flats=int(request.form.get("flats") or 0),
-            sharps=int(request.form.get("sharps") or 0),
             lang=request.form.get("lang", "ko"),
             label_style=request.form.get("label_style", "smart"),
             show_duration="show_duration" in request.form,
-            engine=request.form.get("engine", "cv"),
         )
     except Exception as e:
         return f"처리 실패: {e}", 500
