@@ -881,20 +881,57 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
         chord_font = get_font(int(font_size * 1.05))
         placed_rects = []  # 이 페이지에 그린 라벨 사각형들 (겹침 방지용)
 
-        # 시스템별 마디(바라인) 구간 미리 계산 + 코드 추정을 위한 피치클래스 수집 버킷
+        # ---- audiveris 엔진: Audiveris로 음표(피치/박자/조표)를 먼저 뽑아둔다.
+        # (아래 마디 구간 계산에서 이 시스템별 마디 개수를 그대로 쓸 것이므로
+        # 마디 구간 계산보다 먼저 실행)
+        av_systems, clef_of_staff = [], {}
+        if engine == 'audiveris':
+            try:
+                mxl_path = run_audiveris_export(page, workdir, name=f"p{pi + 1}")
+                av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
+            except Exception as e:
+                print(f"  [{pi + 1}/{len(pages)}] Audiveris 실패: {e}")
+            n_sys = min(len(av_systems), len(systems))
+            if len(av_systems) != len(systems):
+                print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
+                      f"자체 검출 시스템 수({len(systems)}) — 앞쪽 {n_sys}개만 매칭")
+            # Audiveris가 이따금 시스템 끝에 음표 없는 유령 마디를 하나 더
+            # 보고할 때가 있다 — 내용이 없으니 그냥 잘라낸다.
+            for av_measures in av_systems:
+                while len(av_measures) > 1 and not av_measures[-1]:
+                    av_measures.pop()
+
+        # 시스템별 마디 구간 미리 계산 + 코드 추정을 위한 피치클래스 수집 버킷
         system_measures = []       # [[ (x_left,x_right), ... ], ...]  시스템별 마디 리스트
         measure_pitch_sets = []    # [[set(), set(), ...], ...]        시스템별 마디별 피치클래스 집합
-        for sysm in systems:
+        for si, sysm in enumerate(systems):
             start_x = find_staff_start_x(img_np_full, sysm['treble'][2])
             end_x = find_staff_end_x(img_np_full, sysm['treble'][2])
-            y_top = sysm['treble'][0] - spacing
-            y_bottom = sysm['bass'][-1] + spacing
             clef_end = start_x + spacing * 15
-            barlines = find_all_barlines(img_np_full, y_top, y_bottom, clef_end, end_x + 2)
-            bounds = [clef_end] + barlines
-            if bounds[-1] < end_x - spacing:
-                bounds.append(end_x)
-            measures = list(zip(bounds[:-1], bounds[1:]))
+
+            if engine == 'audiveris':
+                # 자체 바라인 검출은 임시표/운지번호를 바라인으로 오인하는 등
+                # 신뢰도가 낮아서(마디 수가 어긋나면 Audiveris 마디와 위치
+                # 인덱스가 밀려 라벨이 엉뚱한 자리에 겹쳐 그려진다), 대신
+                # Audiveris가 직접 센 마디 개수로 오선 구간을 균등 분할한다.
+                # 마디마다 폭이 정확히 비례하진 않지만(내용 밀도 무시), 최소한
+                # 마디 인덱스는 항상 어긋나지 않는다.
+                n = len(av_systems[si]) if si < len(av_systems) else 0
+                if n > 0:
+                    step = (end_x - clef_end) / n
+                    bounds = [clef_end + step * i for i in range(n + 1)]
+                    measures = list(zip(bounds[:-1], bounds[1:]))
+                else:
+                    measures = []
+            else:
+                y_top = sysm['treble'][0] - spacing
+                y_bottom = sysm['bass'][-1] + spacing
+                barlines = find_all_barlines(img_np_full, y_top, y_bottom, clef_end, end_x + 2)
+                bounds = [clef_end] + barlines
+                if bounds[-1] < end_x - spacing:
+                    bounds.append(end_x)
+                measures = list(zip(bounds[:-1], bounds[1:]))
+
             system_measures.append(measures)
             measure_pitch_sets.append([set() for _ in measures])
 
@@ -911,43 +948,36 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             for sysm in systems
         ]
 
-        # ---- audiveris 엔진: Audiveris로 음표(피치/박자/조표)를 뽑아서
-        # 이 스크립트의 오선/마디 좌표계 위에 (x, y)로 다시 배치한다 ----
+        # ---- audiveris 엔진: 뽑아둔 음표를 위에서 계산한 마디 구간 위에 배치 ----
         audiveris_notes = []
         system_fifths = [0] * len(systems)
         if engine == 'audiveris':
-            try:
-                mxl_path = run_audiveris_export(page, workdir, name=f"p{pi + 1}")
-                av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
-            except Exception as e:
-                print(f"  [{pi + 1}/{len(pages)}] Audiveris 실패: {e}")
-                av_systems, clef_of_staff = [], {}
-
-            n_sys = min(len(av_systems), len(systems))
-            if len(av_systems) != len(systems):
-                print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
-                      f"자체 검출 시스템 수({len(systems)}) — 앞쪽 {n_sys}개만 매칭")
-            for si in range(n_sys):
+            for si in range(min(len(av_systems), len(systems))):
                 av_measures = av_systems[si]
                 own_measures = system_measures[si]
-                n_meas = min(len(av_measures), len(own_measures))
+                n_meas = len(own_measures)  # 위에서 av_measures 개수로 만들었으므로 항상 일치
                 if av_measures and av_measures[0]:
                     system_fifths[si] = av_measures[0][0].get('fifths', 0)
                 for mi in range(n_meas):
                     lo, hi = own_measures[mi]
                     pad = (hi - lo) * 0.08
                     lo2, hi2 = lo + pad, hi - pad
-                    grace_seen = {}
+                    seen = {}  # (staff,start) -> 같은 박에 이미 놓인 음표 수(화음/꾸밈음 겹침 방지용)
                     for n in av_measures[mi]:
                         clef = clef_of_staff.get(n['staff'], 'treble' if n['staff'] == 1 else 'bass')
                         lines = systems[si]['treble'] if clef == 'treble' else systems[si]['bass']
                         y = note_to_y(n['letter'], n['octave'], lines, clef)
                         frac = n['start'] / n['measure_total'] if n['measure_total'] else 0
                         x = lo2 + frac * (hi2 - lo2)
+                        # 화음 노트는 전부 같은 start(같은 박)라 x가 겹쳐서 나오는데,
+                        # 라벨 배치 알고리즘이 가로로 퍼뜨릴 여지가 없어져 라벨끼리
+                        # 겹치는 문제가 있었다. 같은 박 음표끼리 x를 살짝 벌려준다.
+                        k = seen.get((n['staff'], n['start']), 0)
+                        seen[(n['staff'], n['start'])] = k + 1
                         if n['is_grace']:
-                            k = grace_seen.get((n['staff'], n['start']), 0)
-                            grace_seen[(n['staff'], n['start'])] = k + 1
                             x -= (k + 1) * spacing * 0.9
+                        elif k:
+                            x += k * spacing * 0.55
                         r = max(3, int(round(spacing * 0.5)))
                         audiveris_notes.append({
                             'x': int(x), 'y': int(y), 'r': r, 'sys_idx': si, 'clef': clef,
