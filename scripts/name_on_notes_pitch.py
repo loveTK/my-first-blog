@@ -37,11 +37,11 @@ PDF/JPG/PNG 악보를 입력받아 음표 머리(notehead)를 검출하고,
 - cv(기본): 이 파일 자체의 OpenCV 노트헤드 검출 + 오선 위치 기반 음이름 계산.
   꾸밈음 누락, 조표 수동 지정 필요 등 위 한계를 그대로 가짐.
 - audiveris: 실제 OMR 엔진인 Audiveris(별도 설치 필요, AUDIVERIS_BIN 참고)로
-  음표를 검출해 MusicXML로 뽑아낸 뒤, 그 피치/박자/조표 정보를 이 스크립트의
+  음표를 검출해 MusicXML로 뽑아낸 뒤, 그 피치/박자 정보를 이 스크립트의
   라벨 배치 로직에 그대로 얹는다. cv 엔진의 약점이던 꾸밈음 누락, 조표 자동
   미검출, 낱개 임시표 미반영이 모두 해결됨(smallHeads 스위치를 켜서 꾸밈음도
-  검출, 조표는 Audiveris가 마디마다 인식한 <fifths> 값을 그대로 사용, 임시표는
-  Audiveris가 계산한 <alter> 값을 그대로 사용). 단, 노트헤드의 화면 좌표 자체는
+  검출, 라벨은 Audiveris가 음표마다 계산한 <alter> 값을 그대로 사용 — 조표뿐
+  아니라 낱개 임시표까지 반영됨). 단, 노트헤드의 화면 좌표 자체는
   Audiveris가 아니라 이 스크립트가 직접 검출한 오선/마디 위치 + 음이름을 오선
   상 위치로 역산해서 계산한다(Audiveris 좌표계를 그대로 못 믿어서가 아니라,
   라벨 배치용 좌표계를 cv 엔진과 통일하기 위함). 한 마디 안에 여러 성부가
@@ -305,52 +305,6 @@ def apply_key_signature(letter, flats=0, sharps=0, lang='ko'):
     if sharps > 0 and letter in SHARP_ORDER[:sharps]:
         return names[letter] + '♯'
     return names[letter]
-
-
-# ---------- 코드(화음) 추정 ----------
-
-NATURAL_SEMITONE = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
-FLAT_ROOT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
-SHARP_ROOT_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
-CHORD_TEMPLATES = [
-    ('', [0, 4, 7]),        # major
-    ('m', [0, 3, 7]),       # minor
-    ('dim', [0, 3, 6]),
-    ('aug', [0, 4, 8]),
-    ('sus4', [0, 5, 7]),
-    ('sus2', [0, 2, 7]),
-    ('7', [0, 4, 7, 10]),
-    ('maj7', [0, 4, 7, 11]),
-    ('m7', [0, 3, 7, 10]),
-]
-
-
-def letter_to_semitone(letter, flats=0, sharps=0):
-    st = NATURAL_SEMITONE[letter]
-    if flats > 0 and letter in FLAT_ORDER[:flats]:
-        st -= 1
-    if sharps > 0 and letter in SHARP_ORDER[:sharps]:
-        st += 1
-    return st % 12
-
-
-def guess_chord(pitch_classes, flats=0, sharps=0):
-    """음 집합(피치클래스 set)으로 가장 그럴듯한 코드명을 추정 (참고용 근사치)"""
-    if not pitch_classes:
-        return None
-    names = FLAT_ROOT_NAMES if flats >= sharps else SHARP_ROOT_NAMES
-    best = None  # (score, label)
-    for root in range(12):
-        for suffix, intervals in CHORD_TEMPLATES:
-            template = {(root + iv) % 12 for iv in intervals}
-            matched = len(pitch_classes & template)
-            extra = len(pitch_classes - template)
-            missing = len(template - pitch_classes)
-            score = matched - 0.5 * extra - 0.3 * missing
-            if best is None or score > best[0]:
-                best = (score, f"{names[root]}{suffix}")
-    return best[1] if best else None
 
 
 # ---------- 음표 길이(리듬) 판별 ----------
@@ -623,7 +577,6 @@ def parse_audiveris_mxl(mxl_path):
     clef_of_staff = {}
     systems = []
     cur_system = None
-    current_fifths = 0
 
     for measure in part.findall("measure"):
         print_el = measure.find("print")
@@ -637,9 +590,6 @@ def parse_audiveris_mxl(mxl_path):
 
         attrs = measure.find("attributes")
         if attrs is not None:
-            key_el = attrs.find("key")
-            if key_el is not None:
-                current_fifths = int(key_el.findtext("fifths", "0"))
             for clef_el in attrs.findall("clef"):
                 num = int(clef_el.get("number", "1"))
                 sign = clef_el.findtext("sign", "G")
@@ -666,7 +616,6 @@ def parse_audiveris_mxl(mxl_path):
                         "alter": int(pitch_el.findtext("alter", "0")),
                         "is_grace": is_grace,
                         "type": note_type,
-                        "fifths": current_fifths,
                     })
                 if not is_chord and not is_grace:
                     cursor += dur
@@ -699,10 +648,6 @@ def note_to_y(letter, octave, staff_lines, clef):
     return bottom_line_y - step * half
 
 
-def letter_alter_to_semitone(letter, alter):
-    return (NATURAL_SEMITONE[letter] + alter) % 12
-
-
 ALTER_SUFFIX = {-2: '♭♭', -1: '♭', 0: '', 1: '♯', 2: '♯♯'}
 
 
@@ -710,10 +655,6 @@ def audiveris_label(letter, alter, lang):
     """Audiveris가 알려준 실제 alter(그 음표 하나에 실제로 적용된 반음표)로
     라벨을 만든다 — 조표뿐 아니라 낱개 임시표까지 반영되므로 cv 엔진보다 정확."""
     return NOTE_NAMES[lang][letter] + ALTER_SUFFIX.get(alter, '')
-
-
-def fifths_to_flats_sharps(fifths):
-    return (-fifths, 0) if fifths < 0 else (0, fifths)
 
 
 AUDIVERIS_DURATION_SUFFIX = {
@@ -754,7 +695,6 @@ def fit_font_to_diameter(draw, text, diameter, max_size, min_size=6):
 
 TREBLE_COLOR = (200, 30, 30)   # 빨강
 BASS_COLOR = (30, 60, 200)     # 파랑
-CHORD_COLOR = (20, 130, 40)    # 초록 (코드는 참고용이라 다른 색으로 구분)
 
 
 def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
@@ -843,7 +783,6 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
     out_pages = []
     total = 0
     unmatched = 0
-    total_chords = 0
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (조표 맵 조회용 전역 순번 기준)
     workdir = tempfile.mkdtemp(prefix="notepitch_") if engine == 'audiveris' else None
 
@@ -862,6 +801,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
             systems = group_into_systems(staves)
             img_np_full = np.array(page.convert("L"))
             _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            note_stems = {}
 
         # 이 페이지의 각 시스템(페이지 로컬 인덱스)에 대응하는 문서 전체 기준 전역 순번(1부터)
         global_sys_nums = [global_sys_offset + i + 1 for i in range(len(systems))]
@@ -893,7 +833,6 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
         draw = ImageDraw.Draw(img)
         font_size = max(10, int(spacing * 1.3 * font_scale))
         font = get_font(font_size)
-        chord_font = get_font(int(font_size * 1.05))
         placed_rects = []  # 이 페이지에 그린 라벨 사각형들 (겹침 방지용)
 
         # ---- audiveris 엔진: Audiveris로 음표(피치/박자/조표)를 먼저 뽑아둔다.
@@ -916,9 +855,8 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                 while len(av_measures) > 1 and not av_measures[-1]:
                     av_measures.pop()
 
-        # 시스템별 마디 구간 미리 계산 + 코드 추정을 위한 피치클래스 수집 버킷
+        # 시스템별 마디 구간 미리 계산 (overlay가 아닌 라벨 배치에 사용)
         system_measures = []       # [[ (x_left,x_right), ... ], ...]  시스템별 마디 리스트
-        measure_pitch_sets = []    # [[set(), set(), ...], ...]        시스템별 마디별 피치클래스 집합
         for si, sysm in enumerate(systems):
             start_x = find_staff_start_x(img_np_full, sysm['treble'][2])
             end_x = find_staff_end_x(img_np_full, sysm['treble'][2])
@@ -948,13 +886,6 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                 measures = list(zip(bounds[:-1], bounds[1:]))
 
             system_measures.append(measures)
-            measure_pitch_sets.append([set() for _ in measures])
-
-        def find_measure_idx(sys_idx, x):
-            for mi, (lo, hi) in enumerate(system_measures[sys_idx]):
-                if lo <= x <= hi:
-                    return mi
-            return len(system_measures[sys_idx]) - 1 if system_measures[sys_idx] else None
 
         # label_style='lane'용: 시스템마다 클레프별 고정 레인 y좌표
         # (높은음자리 레인은 시스템 맨 위보다 더 위, 낮은음자리 레인은 맨 아래보다 더 아래)
@@ -965,14 +896,11 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
 
         # ---- audiveris 엔진: 뽑아둔 음표를 위에서 계산한 마디 구간 위에 배치 ----
         audiveris_notes = []
-        system_fifths = [0] * len(systems)
         if engine == 'audiveris':
             for si in range(min(len(av_systems), len(systems))):
                 av_measures = av_systems[si]
                 own_measures = system_measures[si]
                 n_meas = len(own_measures)  # 위에서 av_measures 개수로 만들었으므로 항상 일치
-                if av_measures and av_measures[0]:
-                    system_fifths[si] = av_measures[0][0].get('fifths', 0)
                 for mi in range(n_meas):
                     lo, hi = own_measures[mi]
                     pad = (hi - lo) * 0.08
@@ -1000,9 +928,8 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
                             'type': n['type'],
                         })
 
-        # ---- 1차: 음이름 계산 + 라벨 그리기 + 코드용 피치클래스 수집 ----
+        # ---- 음이름 계산 + 라벨 그리기 ----
         page_matched = 0
-        note_records = []
         note_source = audiveris_notes if engine == 'audiveris' else (
             {'x': x, 'y': y, 'r': r} for (x, y, r) in noteheads
         )
@@ -1074,41 +1001,12 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
 
             page_matched += 1
 
-            mi = find_measure_idx(best_sys_idx, x)
-            if mi is not None:
-                if engine == 'audiveris':
-                    st = letter_alter_to_semitone(letter, alter)
-                else:
-                    st = letter_to_semitone(letter, flats=sys_flats, sharps=sys_sharps)
-                measure_pitch_sets[best_sys_idx][mi].add(st)
-
-        # ---- 2차: 마디별 코드 추정 + 표시 (참고용 근사치) ----
-        page_chords = 0
-        for si, sysm in enumerate(systems):
-            if engine == 'audiveris':
-                sys_flats, sys_sharps = fifths_to_flats_sharps(system_fifths[si])
-            else:
-                sys_flats, sys_sharps = effective_key(key_map, flats, sharps, global_sys_nums[si])
-            top_y = sysm['treble'][0] - spacing * 2.6
-            for mi, (lo, hi) in enumerate(system_measures[si]):
-                pcs = measure_pitch_sets[si][mi]
-                chord = guess_chord(pcs, flats=sys_flats, sharps=sys_sharps)
-                if chord is None:
-                    continue
-                cx = (lo + hi) / 2
-                lx, ly, lrect = find_label_spot(draw, binary_full, placed_rects, cx, top_y, 0,
-                                                 chord, chord_font, font_size)
-                draw_label_with_bg(draw, lx, ly, chord, chord_font, CHORD_COLOR)
-                placed_rects.append(lrect)
-                page_chords += 1
-
         total += page_matched
-        total_chords += page_chords
         global_sys_offset += len(systems)
         out_pages.append(img)
         sys_range = f"{global_sys_nums[0]}~{global_sys_nums[-1]}" if global_sys_nums else "-"
         print(f"  [{pi+1}/{len(pages)}] 오선간격={spacing}px, 시스템={len(systems)}개(전역 #{sys_range}), "
-              f"음이름={page_matched}개, 코드={page_chords}개")
+              f"음이름={page_matched}개")
 
     ext = os.path.splitext(output_path)[1].lower()
     if ext == ".pdf":
@@ -1116,7 +1014,7 @@ def process(input_path, output_path, flats=0, sharps=0, key_map=None, lang='ko',
     else:
         out_pages[0].save(output_path)
 
-    print(f"완료: 음이름 {total}개, 코드(참고용) {total_chords}개 부착 (매칭 실패 {unmatched}개) -> {output_path}")
+    print(f"완료: 음이름 {total}개 부착 (매칭 실패 {unmatched}개) -> {output_path}")
 
 
 def default_output_path(input_path):
