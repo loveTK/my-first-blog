@@ -67,7 +67,6 @@ NOTE_NAMES = {
     'letter': {'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G', 'A': 'A', 'B': 'B'},
     'ja': {'C': 'ド', 'D': 'レ', 'E': 'ミ', 'F': 'ファ', 'G': 'ソ', 'A': 'ラ', 'B': 'シ'},
 }
-FIXED_DO = NOTE_NAMES['ko']  # 하위 호환용 별칭
 
 
 def load_pages(input_path, dpi=200):
@@ -140,21 +139,6 @@ def step_to_note(step0_letter, step0_octave, step):
     letter = LETTERS_ASC[total % 7]
     octave = step0_octave + total // 7
     return letter, octave
-
-
-def find_first_barline_x(img_gray, y_top, y_bottom, x_search_start, x_search_end):
-    """지정된 y범위(오선 시스템 높이) 안에서 세로로 길게 이어진 검은 선(바라인)의
-    x좌표 중 가장 왼쪽 것을 찾는다. 음자리표/조표/박자표는 항상 첫 바라인보다 왼쪽에 있다."""
-    band = img_gray[int(y_top):int(y_bottom), :]
-    if band.shape[0] == 0:
-        return None
-    col_black_ratio = (band < 128).mean(axis=0)
-    for x in range(int(x_search_start), min(int(x_search_end), len(col_black_ratio))):
-        if col_black_ratio[x] > 0.85:
-            return x
-    return None
-
-
 
 
 
@@ -578,7 +562,7 @@ def draw_label_with_bg(draw, x, y, text, font, text_color, pad=2):
     draw.text((tx, ty), text, fill=text_color, font=font)
 
 
-def rect_has_ink(binary, rect, min_dark_pixels=0):
+def rect_has_ink(binary, rect):
     """사각형 영역 안에 원본 악보 잉크(음표/운지번호/셋잇단음표 숫자/스템/빔/오선 등)가
     있는지 검사. 비율(예: 12%) 기준은 라벨 박스가 크면 작은 숫자 기호 하나는
     전체 면적 대비 비중이 작아서 안 걸리는 문제가 있었고, 절대 개수 기준(6px)도
@@ -590,7 +574,7 @@ def rect_has_ink(binary, rect, min_dark_pixels=0):
     x1, y1 = min(binary.shape[1], int(x1)), min(binary.shape[0], int(y1))
     if x1 <= x0 or y1 <= y0:
         return False
-    return int((binary[y0:y1, x0:x1] > 0).sum()) > min_dark_pixels
+    return bool((binary[y0:y1, x0:x1] > 0).any())
 
 
 def rects_overlap(a, b):
