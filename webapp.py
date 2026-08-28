@@ -42,8 +42,16 @@ button{margin-top:20px;padding:10px 20px}
     </select>
   </label>
   <label><input type="checkbox" name="show_duration" style="width:auto"> 음표 길이 표시</label>
-  <button type="submit">계이름 삽입</button>
+  <button type="submit" id="submitBtn">계이름 삽입</button>
+  <p id="status" style="display:none;color:#555">처리 중... 파일에 따라 1~5분 걸릴 수 있음. 페이지를 벗어나지 마세요.</p>
 </form>
+<script>
+document.querySelector("form").addEventListener("submit", function () {
+  document.getElementById("submitBtn").disabled = true;
+  document.getElementById("submitBtn").textContent = "처리 중...";
+  document.getElementById("status").style.display = "block";
+});
+</script>
 </body></html>"""
 
 
