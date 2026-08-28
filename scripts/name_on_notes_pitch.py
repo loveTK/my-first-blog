@@ -445,6 +445,7 @@ def process(input_path, output_path, lang='ko',
         # (아래 마디 구간 계산에서 이 시스템별 마디 개수를 그대로 쓸 것이므로
         # 마디 구간 계산보다 먼저 실행)
         av_systems, clef_of_staff = [], {}
+        print(f"  [{pi + 1}/{len(pages)}] Audiveris 실행 시작...")
         try:
             mxl_path = run_audiveris_export(page, workdir, name=f"p{pi + 1}")
             av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)

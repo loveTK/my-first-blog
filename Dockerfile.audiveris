@@ -31,6 +31,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=audiveris-build /opt/audiveris/dist /opt/audiveris/dist
 ENV AUDIVERIS_BIN=/opt/audiveris/dist/bin/Audiveris
 ENV AUDIVERIS_JAVA_HOME=$JAVA_HOME
+# print()가 파이프로 나갈 땐 버퍼링돼서 로그가 안 보이다가 한꺼번에 찍힘 —
+# 처리 중 로그가 실시간으로 안 보여서 원인 파악이 안 되던 문제 해결.
+ENV PYTHONUNBUFFERED=1
 # 배포 서버엔 화면이 없다 — Swing 초기화가 그래도 GTK 네이티브 위젯을 찾아서
 # libgtk-3.so가 없으면 (또는 있어도 디스플레이가 없으면) 죽는다. headless를
 # 강제해서 애초에 그 경로를 안 타게 한다. (libgtk-3-0도 같이 깔아서 이중 방어.)

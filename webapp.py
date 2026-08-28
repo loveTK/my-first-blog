@@ -71,6 +71,7 @@ def do_process():
     in_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
     f.save(in_path)
     out_path = default_output_path(in_path)
+    print(f"요청 받음: {f.filename} -> 처리 시작")
 
     try:
         process(
