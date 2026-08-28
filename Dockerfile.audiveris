@@ -48,4 +48,6 @@ RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
 
 COPY . .
 
-CMD gunicorn -b 0.0.0.0:${PORT:-8080} webapp:app
+# gunicorn 기본 워커 타임아웃(30초)은 Audiveris 처리 시간(페이지당 20초+)보다
+# 짧아서, 요청이 처리 중에 워커가 죽어 응답이 영영 안 오는 문제가 있었다.
+CMD gunicorn -b 0.0.0.0:${PORT:-8080} --timeout 600 --workers 1 webapp:app
