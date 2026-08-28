@@ -168,12 +168,20 @@ def ensure_max_pixels(img, max_px=AUDIVERIS_MAX_PIXELS):
     return img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
 
 
-def run_audiveris_export(img, workdir, name="page"):
-    """페이지 이미지를 Audiveris(-batch -export, smallHeads 스위치 켬)로 돌려서
-    MusicXML(.mxl) 경로를 반환한다. smallHeads를 켜야 꾸밈음(그레이스 노트)도
-    노트헤드로 잡힌다(기본은 꺼져 있어서 CUE_BEAMS 단계가 통째로 스킵됨)."""
-    png_path = os.path.join(workdir, f"{name}.png")
-    ensure_max_pixels(img).save(png_path)
+def run_audiveris_export_batch(pages, workdir):
+    """전체 페이지를 한 번의 Audiveris(-batch -export) 실행으로 처리한다.
+    페이지마다 따로 실행하면 JVM 부팅(+모델 로딩) 비용을 페이지 수만큼
+    반복하게 되어 문서가 길수록 불필요하게 느려진다 — 이미지들을 한 커맨드에
+    다 넘겨서 JVM을 한 번만 띄운다(Audiveris는 입력 파일마다 별도 book으로
+    처리하므로 출력 .mxl은 그대로 페이지별로 나온다).
+    smallHeads를 켜야 꾸밈음(그레이스 노트)도 노트헤드로 잡힌다(기본은
+    꺼져 있어서 CUE_BEAMS 단계가 통째로 스킵됨).
+    반환: (mxl_path 없거나 존재하는 페이지 인덱스(0부터) -> 경로 or None, 실패 시 에러 상세)"""
+    png_paths = []
+    for pi, page in enumerate(pages):
+        png_path = os.path.join(workdir, f"p{pi + 1}.png")
+        ensure_max_pixels(page).save(png_path)
+        png_paths.append(png_path)
 
     env = dict(os.environ)
     env["JAVA_HOME"] = AUDIVERIS_JAVA_HOME
@@ -184,22 +192,25 @@ def run_audiveris_export(img, workdir, name="page"):
     cmd = [
         AUDIVERIS_BIN, "-batch", "-export",
         "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
-        "-output", out_dir, png_path,
+        "-output", out_dir, *png_paths,
     ]
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300)
-    mxl_path = os.path.join(out_dir, f"{name}.mxl")
-    if not os.path.exists(mxl_path):
+    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300 * len(pages))
+
+    error_detail = None
+    if result.returncode != 0:
         combined = result.stdout + "\n" + result.stderr
         # 자바 예외 메시지 앞부분(클래스패스 나열 등)이 아주 길 때가 있어서
         # 그냥 끝에서 N글자만 자르면 정작 중요한 "Caused by:" 줄이 잘려
         # 나가는 경우가 있었다. "Caused by"/"Error"가 있는 줄들을 우선
         # 모아서 보여주고, 없으면 그냥 끝부분을 보여준다.
         cause_lines = [ln for ln in combined.splitlines() if "Caused by" in ln or "Error" in ln]
-        detail = "\n".join(cause_lines[-20:]) if cause_lines else combined[-3000:]
-        raise RuntimeError(
-            f"Audiveris 실행 실패 (returncode={result.returncode}):\n{detail}"
-        )
-    return mxl_path
+        error_detail = "\n".join(cause_lines[-20:]) if cause_lines else combined[-3000:]
+
+    mxl_paths = {}
+    for pi in range(len(pages)):
+        mxl_path = os.path.join(out_dir, f"p{pi + 1}.mxl")
+        mxl_paths[pi] = mxl_path if os.path.exists(mxl_path) else None
+    return mxl_paths, error_detail
 
 
 def parse_audiveris_mxl(mxl_path):
@@ -424,6 +435,9 @@ def process(input_path, output_path, lang='ko',
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (로그용 전역 순번 기준)
     workdir = tempfile.mkdtemp(prefix="notepitch_")
 
+    print(f"Audiveris 실행 시작 (총 {len(pages)}페이지, 한 번에 처리)...")
+    mxl_paths, batch_error = run_audiveris_export_batch(pages, workdir)
+
     for pi, page in enumerate(pages):
         img_np_full = np.array(page.convert("L"))
         _, binary_full = cv2.threshold(img_np_full, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -445,14 +459,19 @@ def process(input_path, output_path, lang='ko',
         # (아래 마디 구간 계산에서 이 시스템별 마디 개수를 그대로 쓸 것이므로
         # 마디 구간 계산보다 먼저 실행)
         av_systems, clef_of_staff = [], {}
-        print(f"  [{pi + 1}/{len(pages)}] Audiveris 실행 시작...")
-        try:
-            mxl_path = run_audiveris_export(page, workdir, name=f"p{pi + 1}")
-            av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
-        except Exception as e:
-            print(f"  [{pi + 1}/{len(pages)}] Audiveris 실패: {e}")
+        mxl_path = mxl_paths.get(pi)
+        if mxl_path:
+            try:
+                av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
+            except Exception as e:
+                print(f"  [{pi + 1}/{len(pages)}] mxl 파싱 실패: {e}")
+                if first_audiveris_error is None:
+                    first_audiveris_error = str(e)
+        else:
+            print(f"  [{pi + 1}/{len(pages)}] Audiveris 결과 없음"
+                  + (f": {batch_error}" if batch_error else ""))
             if first_audiveris_error is None:
-                first_audiveris_error = str(e)
+                first_audiveris_error = batch_error or "알 수 없는 오류"
         n_sys = min(len(av_systems), len(systems))
         if len(av_systems) != len(systems):
             print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
