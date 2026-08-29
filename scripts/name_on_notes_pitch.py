@@ -1,13 +1,13 @@
 """
 악보 위에 계이름(고정도) 자동 삽입
 --------------------------------------------------
-PDF/JPG/PNG 악보를 입력받아 Audiveris(OMR 엔진)로 음표를 검출한 뒤,
+PDF/JPG/PNG 악보를 입력받아 homr(트랜스포머 기반 OMR 엔진)로 음표를 검출한 뒤,
 실제 음이름을 계산해 각 음표 위에 고정도 계이름(도레미파솔라시, 항상 C=도)을 써넣는다.
 
-Audiveris로 음표(피치/박자/조표/낱개 임시표)를 MusicXML로 뽑아낸 뒤, 그 정보를
-이 스크립트가 직접 검출한 오선/마디 위치 위에 얹는다(라벨 좌표는 Audiveris
-좌표계가 아니라 이 스크립트가 검출한 오선 위치로 역산해서 계산한다).
-smallHeads 스위치를 켜서 꾸밈음(그레이스 노트)도 검출한다.
+homr로 음표(피치/박자/조표/낱개 임시표/꾸밈음)를 MusicXML로 뽑아낸 뒤, 그 정보를
+이 스크립트가 직접 검출한 오선/마디 위치 위에 얹는다(라벨 좌표는 homr 좌표계가
+아니라 이 스크립트가 검출한 오선 위치로 역산해서 계산한다). 순수 파이썬(PyTorch/
+ONNX Runtime)이라 자바/JVM이 필요 없다.
 
 한계:
 - 그랜드 스태프(피아노보) 전용: 각 시스템이 [높은음자리, 낮은음자리] 순서로 위→아래 배치된다고 가정
@@ -15,7 +15,7 @@ smallHeads 스위치를 켜서 꾸밈음(그레이스 노트)도 검출한다.
   얼추 맞지만 완벽하진 않음
 
 음표 길이(리듬):
-- --show-duration을 줘야 Audiveris가 알려준 음표 종류로 라벨 옆에 (온)/(2)/(8) 등을 표시한다.
+- --show-duration을 줘야 homr이 알려준 음표 종류로 라벨 옆에 (온)/(2)/(8) 등을 표시한다.
   기본값은 표시하지 않는다.
 
 계이름 언어(--lang):
@@ -33,10 +33,8 @@ smallHeads 스위치를 켜서 꾸밈음(그레이스 노트)도 검출한다.
 import argparse
 import functools
 import os
-import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
-import zipfile
 
 import cv2
 import numpy as np
@@ -149,72 +147,53 @@ def guess_staff_spacing(line_centers):
     return max(4, int(np.median(small))) if small else 14
 
 
-# ---------- Audiveris 엔진 연동 ----------
+# ---------- homr 엔진 연동 ----------
 
-AUDIVERIS_BIN = os.environ.get(
-    "AUDIVERIS_BIN", "/home/user/audiveris/dist/app-5.11.0/bin/Audiveris"
-)
-AUDIVERIS_JAVA_HOME = os.environ.get(
-    "AUDIVERIS_JAVA_HOME", "/usr/lib/jvm/java-25-openjdk-amd64"
-)
-AUDIVERIS_MAX_PIXELS = 19_500_000  # Audiveris 자체 상한(2000만)보다 약간 여유
+def run_homr_export_batch(pages, workdir):
+    """전체 페이지를 한 파이썬 프로세스 안에서 homr(트랜스포머 기반 OMR)로
+    돌려 페이지별 MusicXML을 만든다. homr을 라이브러리로 직접 import해서
+    호출하므로(CLI를 페이지마다 새로 실행하지 않음), 제일 무거운 트랜스포머
+    모델은 첫 페이지에서 한 번만 로드되고 이후 페이지들은 그대로 재사용된다.
+    반환: (페이지 인덱스(0부터) -> musicxml 경로 또는 None, 실패 시 에러 상세)"""
+    from homr.main import ProcessingConfig, download_weights, process_image
+    from homr.music_xml_generator import XmlGeneratorArguments
+    from homr.onnx_providers import coreml_available, cuda_available
 
+    use_cuda = cuda_available()
+    segnet_use_gpu = use_cuda or coreml_available()
+    # CLI(main())는 처리 전에 이걸 자동으로 해주지만, 라이브러리로 직접
+    # 호출할 땐 우리가 직접 불러줘야 한다 — 안 그러면 모델 파일이 없다는
+    # ONNXRuntimeError로 조용히 실패한다. 이미 받아져 있으면 즉시 리턴.
+    download_weights(segnet_use_gpu, transformer_use_gpu=use_cuda, coreml_encoder=False)
 
-def ensure_max_pixels(img, max_px=AUDIVERIS_MAX_PIXELS):
-    """Audiveris는 너무 큰 이미지를 거부하므로(2000만 픽셀), 넘으면 비율 유지 축소."""
-    if img.width * img.height <= max_px:
-        return img
-    scale = (max_px / (img.width * img.height)) ** 0.5
-    return img.resize((max(1, int(img.width * scale)), max(1, int(img.height * scale))))
+    config = ProcessingConfig(
+        enable_debug=False, enable_cache=False,
+        write_staff_positions=False, read_staff_positions=False,
+        selected_staff=-1,
+        transformer_use_gpu=use_cuda,
+        segnet_use_gpu=segnet_use_gpu,
+        coreml_encoder=False,
+    )
+    xml_args = XmlGeneratorArguments()
 
-
-def run_audiveris_export_batch(pages, workdir):
-    """전체 페이지를 한 번의 Audiveris(-batch -export) 실행으로 처리한다.
-    페이지마다 따로 실행하면 JVM 부팅(+모델 로딩) 비용을 페이지 수만큼
-    반복하게 되어 문서가 길수록 불필요하게 느려진다 — 이미지들을 한 커맨드에
-    다 넘겨서 JVM을 한 번만 띄운다(Audiveris는 입력 파일마다 별도 book으로
-    처리하므로 출력 .mxl은 그대로 페이지별로 나온다).
-    smallHeads를 켜야 꾸밈음(그레이스 노트)도 노트헤드로 잡힌다(기본은
-    꺼져 있어서 CUE_BEAMS 단계가 통째로 스킵됨).
-    반환: (mxl_path 없거나 존재하는 페이지 인덱스(0부터) -> 경로 or None, 실패 시 에러 상세)"""
-    png_paths = []
+    xml_paths = {}
+    error_detail = None
     for pi, page in enumerate(pages):
         png_path = os.path.join(workdir, f"p{pi + 1}.png")
-        ensure_max_pixels(page).save(png_path)
-        png_paths.append(png_path)
-
-    env = dict(os.environ)
-    env["JAVA_HOME"] = AUDIVERIS_JAVA_HOME
-    env["PATH"] = f"{AUDIVERIS_JAVA_HOME}/bin:" + env.get("PATH", "")
-
-    out_dir = os.path.join(workdir, "audiveris_out")
-    os.makedirs(out_dir, exist_ok=True)
-    cmd = [
-        AUDIVERIS_BIN, "-batch", "-export",
-        "-constant", "org.audiveris.omr.sheet.ProcessingSwitches.smallHeads=true",
-        "-output", out_dir, *png_paths,
-    ]
-    result = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=300 * len(pages))
-
-    error_detail = None
-    if result.returncode != 0:
-        combined = result.stdout + "\n" + result.stderr
-        # 자바 예외 메시지 앞부분(클래스패스 나열 등)이 아주 길 때가 있어서
-        # 그냥 끝에서 N글자만 자르면 정작 중요한 "Caused by:" 줄이 잘려
-        # 나가는 경우가 있었다. "Caused by"/"Error"가 있는 줄들을 우선
-        # 모아서 보여주고, 없으면 그냥 끝부분을 보여준다.
-        cause_lines = [ln for ln in combined.splitlines() if "Caused by" in ln or "Error" in ln]
-        error_detail = "\n".join(cause_lines[-20:]) if cause_lines else combined[-3000:]
-
-    mxl_paths = {}
-    for pi in range(len(pages)):
-        mxl_path = os.path.join(out_dir, f"p{pi + 1}.mxl")
-        mxl_paths[pi] = mxl_path if os.path.exists(mxl_path) else None
-    return mxl_paths, error_detail
+        page.save(png_path)
+        xml_path = os.path.splitext(png_path)[0] + ".musicxml"
+        try:
+            process_image(png_path, config, xml_args)
+            xml_paths[pi] = xml_path if os.path.exists(xml_path) else None
+        except Exception as e:
+            xml_paths[pi] = None
+            if error_detail is None:
+                error_detail = str(e)
+    return xml_paths, error_detail
 
 
-def parse_audiveris_mxl(mxl_path):
-    """Audiveris가 만든 .mxl에서 시스템별 -> 마디별 음표 목록을 뽑아낸다.
+def parse_musicxml(xml_path):
+    """homr가 만든 MusicXML에서 시스템별 -> 마디별 음표 목록을 뽑아낸다.
     악보 상의 x/y 좌표는 쓰지 않는다(이 스크립트가 직접 검출한 오선/마디 좌표계로
     다시 배치할 것이므로). 대신 각 음표의 마디 내 발음 시점(divisions 단위)을
     구해두면, 그 마디의 픽셀 폭 안에서 비율로 x를 보간할 수 있다 — <backup>/
@@ -223,9 +202,7 @@ def parse_audiveris_mxl(mxl_path):
     반환: (systems, clef_of_staff)
       systems = [ [ [note_dict, ...] (마디), ... ] (시스템), ... ]
       clef_of_staff = {스태프번호: 'treble'|'bass'}"""
-    with zipfile.ZipFile(mxl_path) as zf:
-        xml_name = next(n for n in zf.namelist() if n.endswith(".xml") and "META-INF" not in n)
-        root = ET.fromstring(zf.read(xml_name))
+    root = ET.parse(xml_path).getroot()
 
     part = root.find("part")
     if part is None:
@@ -308,13 +285,13 @@ def note_to_y(letter, octave, staff_lines, clef):
 ALTER_SUFFIX = {-2: '♭♭', -1: '♭', 0: '', 1: '♯', 2: '♯♯'}
 
 
-def audiveris_label(letter, alter, lang):
-    """Audiveris가 알려준 실제 alter(그 음표 하나에 실제로 적용된 반음표)로
+def note_label(letter, alter, lang):
+    """OMR 엔진이 알려준 실제 alter(그 음표 하나에 실제로 적용된 반음표)로
     라벨을 만든다 — 조표뿐 아니라 낱개 임시표까지 반영된다."""
     return NOTE_NAMES[lang][letter] + ALTER_SUFFIX.get(alter, '')
 
 
-AUDIVERIS_DURATION_SUFFIX = {
+DURATION_SUFFIX = {
     'whole': '(온)', 'half': '(2)', 'quarter': '',
     'eighth': '(8)', '16th': '(16)', '32nd': '(32)', '64th': '(64)',
 }
@@ -431,12 +408,12 @@ def process(input_path, output_path, lang='ko',
     pages = load_pages(input_path, dpi=dpi)
     out_pages = []
     total = 0
-    first_audiveris_error = None
+    first_omr_error = None
     global_sys_offset = 0  # 이전 페이지까지 누적된 시스템 개수 (로그용 전역 순번 기준)
     workdir = tempfile.mkdtemp(prefix="notepitch_")
 
-    print(f"Audiveris 실행 시작 (총 {len(pages)}페이지, 한 번에 처리)...")
-    mxl_paths, batch_error = run_audiveris_export_batch(pages, workdir)
+    print(f"homr 실행 시작 (총 {len(pages)}페이지)...")
+    xml_paths, batch_error = run_homr_export_batch(pages, workdir)
 
     for pi, page in enumerate(pages):
         img_np_full = np.array(page.convert("L"))
@@ -455,32 +432,32 @@ def process(input_path, output_path, lang='ko',
         font = get_font(font_size)
         placed_rects = []  # 이 페이지에 그린 라벨 사각형들 (겹침 방지용)
 
-        # ---- Audiveris로 음표(피치/박자/조표)를 먼저 뽑아둔다.
+        # ---- homr로 음표(피치/박자/조표)를 먼저 뽑아둔다.
         # (아래 마디 구간 계산에서 이 시스템별 마디 개수를 그대로 쓸 것이므로
         # 마디 구간 계산보다 먼저 실행)
-        av_systems, clef_of_staff = [], {}
-        mxl_path = mxl_paths.get(pi)
-        if mxl_path:
+        omr_systems, clef_of_staff = [], {}
+        xml_path = xml_paths.get(pi)
+        if xml_path:
             try:
-                av_systems, clef_of_staff = parse_audiveris_mxl(mxl_path)
+                omr_systems, clef_of_staff = parse_musicxml(xml_path)
             except Exception as e:
-                print(f"  [{pi + 1}/{len(pages)}] mxl 파싱 실패: {e}")
-                if first_audiveris_error is None:
-                    first_audiveris_error = str(e)
+                print(f"  [{pi + 1}/{len(pages)}] MusicXML 파싱 실패: {e}")
+                if first_omr_error is None:
+                    first_omr_error = str(e)
         else:
-            print(f"  [{pi + 1}/{len(pages)}] Audiveris 결과 없음"
+            print(f"  [{pi + 1}/{len(pages)}] homr 결과 없음"
                   + (f": {batch_error}" if batch_error else ""))
-            if first_audiveris_error is None:
-                first_audiveris_error = batch_error or "알 수 없는 오류"
-        n_sys = min(len(av_systems), len(systems))
-        if len(av_systems) != len(systems):
-            print(f"  [경고] Audiveris 시스템 수({len(av_systems)}) != "
+            if first_omr_error is None:
+                first_omr_error = batch_error or "알 수 없는 오류"
+        n_sys = min(len(omr_systems), len(systems))
+        if len(omr_systems) != len(systems):
+            print(f"  [경고] homr 시스템 수({len(omr_systems)}) != "
                   f"자체 검출 시스템 수({len(systems)}) — 앞쪽 {n_sys}개만 매칭")
-        # Audiveris가 이따금 시스템 끝에 음표 없는 유령 마디를 하나 더
+        # homr이 이따금 시스템 끝에 음표 없는 유령 마디를 하나 더
         # 보고할 때가 있다 — 내용이 없으니 그냥 잘라낸다.
-        for av_measures in av_systems:
-            while len(av_measures) > 1 and not av_measures[-1]:
-                av_measures.pop()
+        for omr_measures in omr_systems:
+            while len(omr_measures) > 1 and not omr_measures[-1]:
+                omr_measures.pop()
 
         # 시스템별 마디 구간 미리 계산 (overlay가 아닌 라벨 배치에 사용)
         system_measures = []       # [[ (x_left,x_right), ... ], ...]  시스템별 마디 리스트
@@ -490,12 +467,12 @@ def process(input_path, output_path, lang='ko',
             clef_end = start_x + spacing * 15
 
             # 자체 바라인 검출은 임시표/운지번호를 바라인으로 오인하는 등
-            # 신뢰도가 낮아서(마디 수가 어긋나면 Audiveris 마디와 위치
+            # 신뢰도가 낮아서(마디 수가 어긋나면 homr 마디와 위치
             # 인덱스가 밀려 라벨이 엉뚱한 자리에 겹쳐 그려진다), 대신
-            # Audiveris가 직접 센 마디 개수로 오선 구간을 균등 분할한다.
+            # homr이 직접 센 마디 개수로 오선 구간을 균등 분할한다.
             # 마디마다 폭이 정확히 비례하진 않지만(내용 밀도 무시), 최소한
             # 마디 인덱스는 항상 어긋나지 않는다.
-            n = len(av_systems[si]) if si < len(av_systems) else 0
+            n = len(omr_systems[si]) if si < len(omr_systems) else 0
             if n > 0:
                 step = (end_x - clef_end) / n
                 bounds = [clef_end + step * i for i in range(n + 1)]
@@ -513,17 +490,17 @@ def process(input_path, output_path, lang='ko',
         ]
 
         # ---- 뽑아둔 음표를 위에서 계산한 마디 구간 위에 배치 ----
-        audiveris_notes = []
-        for si in range(min(len(av_systems), len(systems))):
-            av_measures = av_systems[si]
+        omr_notes = []
+        for si in range(min(len(omr_systems), len(systems))):
+            omr_measures = omr_systems[si]
             own_measures = system_measures[si]
-            n_meas = len(own_measures)  # 위에서 av_measures 개수로 만들었으므로 항상 일치
+            n_meas = len(own_measures)  # 위에서 omr_measures 개수로 만들었으므로 항상 일치
             for mi in range(n_meas):
                 lo, hi = own_measures[mi]
                 pad = (hi - lo) * 0.08
                 lo2, hi2 = lo + pad, hi - pad
                 seen = {}  # (staff,start) -> 같은 박에 이미 놓인 음표 수(화음/꾸밈음 겹침 방지용)
-                for n in av_measures[mi]:
+                for n in omr_measures[mi]:
                     clef = clef_of_staff.get(n['staff'], 'treble' if n['staff'] == 1 else 'bass')
                     lines = systems[si]['treble'] if clef == 'treble' else systems[si]['bass']
                     y = note_to_y(n['letter'], n['octave'], lines, clef)
@@ -539,7 +516,7 @@ def process(input_path, output_path, lang='ko',
                     elif k:
                         x += k * spacing * 0.55
                     r = max(3, int(round(spacing * 0.5)))
-                    audiveris_notes.append({
+                    omr_notes.append({
                         'x': int(x), 'y': int(y), 'r': r, 'sys_idx': si, 'clef': clef,
                         'letter': n['letter'], 'octave': n['octave'], 'alter': n['alter'],
                         'type': n['type'],
@@ -547,16 +524,16 @@ def process(input_path, output_path, lang='ko',
 
         # ---- 음이름 계산 + 라벨 그리기 ----
         page_matched = 0
-        for item in audiveris_notes:
+        for item in omr_notes:
             x, y, r = item['x'], item['y'], item['r']
 
             best_sys_idx = item['sys_idx']
             clef = item['clef']
             letter, octave, alter = item['letter'], item['octave'], item['alter']
-            label = audiveris_label(letter, alter, lang)
-            dur_key = item['type'] if item['type'] in AUDIVERIS_DURATION_SUFFIX else 'quarter'
+            label = note_label(letter, alter, lang)
+            dur_key = item['type'] if item['type'] in DURATION_SUFFIX else 'quarter'
             if show_duration:
-                label += AUDIVERIS_DURATION_SUFFIX.get(dur_key, '')
+                label += DURATION_SUFFIX.get(dur_key, '')
             color = TREBLE_COLOR if clef == 'treble' else BASS_COLOR
 
             if label_style == 'overlay':
@@ -593,11 +570,11 @@ def process(input_path, output_path, lang='ko',
               f"음이름={page_matched}개")
 
     if total == 0:
-        # Audiveris가 모든 페이지에서 실패하면 이전엔 그냥 원본과 똑같은(라벨
+        # homr이 모든 페이지에서 실패하면 이전엔 그냥 원본과 똑같은(라벨
         # 하나도 없는) 파일을 조용히 돌려줬다 — 실패를 실패로 알리지 않는 게
         # 더 나쁘다고 판단해 예외를 던지도록 바꿨다. 웹앱 쪽에서 이걸 잡아
         # 사용자에게 실패 메시지로 보여준다.
-        detail = f" (원인: {first_audiveris_error})" if first_audiveris_error else ""
+        detail = f" (원인: {first_omr_error})" if first_omr_error else ""
         raise RuntimeError(f"음표 검출 실패 (음표 0개 검출){detail}")
 
     ext = os.path.splitext(output_path)[1].lower()

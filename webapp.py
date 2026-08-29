@@ -3,8 +3,7 @@ name_on_notes_pitch.py 를 웹앱으로 감싼 것.
 악보(PDF/JPG/PNG) 업로드 -> process() 그대로 실행 -> 결과 파일 다운로드.
 
 실행: python3 webapp.py  (기본 0.0.0.0:5000)
-서버에 Audiveris/JDK25가 설치되어 있어야 한다
-(scripts/name_on_notes_pitch.py 상단 AUDIVERIS_BIN/AUDIVERIS_JAVA_HOME 참고).
+homr(순수 파이썬 OMR)만 pip install 되어 있으면 됨 — 자바/JVM 불필요.
 """
 
 import os
