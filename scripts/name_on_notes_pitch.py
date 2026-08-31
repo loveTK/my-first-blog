@@ -305,6 +305,9 @@ def get_font(size):
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
         "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "C:/Windows/Fonts/malgunbd.ttf",  # 윈도우 기본 한글 폰트(맑은 고딕, 볼드)
+        "C:/Windows/Fonts/malgun.ttf",
+        "/System/Library/Fonts/AppleSDGothicNeo.ttc",  # macOS
     ]
     for path in candidates:
         if os.path.exists(path):
