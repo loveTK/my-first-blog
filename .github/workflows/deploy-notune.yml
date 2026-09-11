@@ -22,6 +22,7 @@ jobs:
       - run: docker build -t notune notune/
       - id: push
         run: |
+          set -euo pipefail
           aws lightsail push-container-image \
             --service-name notune --label notune --image notune \
             | tee push.log
