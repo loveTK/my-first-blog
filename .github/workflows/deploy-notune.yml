@@ -1,0 +1,36 @@
+name: deploy notune to lightsail
+on:
+  push:
+    branches: [claude/playwright-plugin-install-bgpysg]
+    paths: [notune/**]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - run: |
+          sudo curl -sL https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
+            -o /usr/local/bin/lightsailctl
+          sudo chmod +x /usr/local/bin/lightsailctl
+      - run: docker build -t notune notune/
+      - id: push
+        run: |
+          aws lightsail push-container-image \
+            --service-name notune --label notune --image notune \
+            | tee push.log
+          echo "image=$(grep -oP '(?<=Refer to this image as ")[^"]+' push.log)" >> "$GITHUB_OUTPUT"
+      - run: |
+          cat > deploy.json <<EOF
+          {"notune": {"image": "${{ steps.push.outputs.image }}", "ports": {"8000": "HTTP"}}}
+          EOF
+          aws lightsail create-container-service-deployment \
+            --service-name notune \
+            --containers file://deploy.json \
+            --public-endpoint '{"containerName":"notune","containerPort":8000,"healthCheck":{"path":"/"}}'
