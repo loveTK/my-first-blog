@@ -26,7 +26,9 @@ def detect_staves(ink):
     mask_x1: 음자리표+조표 끝 x (hollow 음표 검출에만 적용할 마스크 경계)."""
     h, w = ink.shape
     row_ink = (ink > 0).sum(axis=1)
-    is_line = row_ink > 0.4 * w  # ponytail: 기울어진 스캔은 못 잡음. 필요시 deskew 추가.
+    # 페이지 최대 잉크 폭 기준 상대 임계값: 첫 시스템에 악기명이 붙어 오선이 더 짧은 경우 등을 대비.
+    # ponytail: 기울어진 스캔은 못 잡음. 필요시 deskew 추가.
+    is_line = row_ink > max(0.6 * row_ink.max(), 0.2 * w)
     # 연속 행 → 선 하나(두께 반영해 중앙값 사용)
     lines, y = [], 0
     while y < h:
@@ -117,6 +119,26 @@ def remove_lines(ink, ss):
     return out
 
 
+def _has_stem(clean, x, y, w, h, ss):
+    """filled 머리는 항상 기둥(세로선)이 붙어있다(온음표 제외, 온음표=hollow라 여긴 안 옴).
+    머리 좌/우 끝에서 머리 높이보다 위/아래로 더 뻗은 얇은 세로 잉크 = 기둥.
+    숫자(박자표)·임시표는 기둥이 없어 걸러짐."""
+    H, W = clean.shape
+    need = int(h + 0.8 * ss)
+    margin = max(int(0.3 * w), 2)
+    cols = list(range(max(x - 1, 0), min(x + margin, W))) + list(range(max(x + w - margin, 0), min(x + w + 1, W)))
+    band = clean[max(y - int(1.5 * ss), 0):min(y + h + int(1.5 * ss), H)][:, cols] > 0
+    for c in range(band.shape[1]):
+        col = band[:, c]
+        runs, cur = [], 0
+        for v in col:
+            cur = cur + 1 if v else 0
+            runs.append(cur)
+        if max(runs, default=0) >= need:
+            return True
+    return False
+
+
 def _has_ledger(ink, x, y, ss):
     """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
     half = int(0.9 * ss)
@@ -143,6 +165,8 @@ def detect_heads(ink, staves):
         x, y, w, h, area = stats[i]
         # 높이 <0.75ss: 기울어진 빔이 오선과 겹쳐 두꺼워진 조각(커널 높이만큼만 남음). 머리는 ≈1ss
         if not (0.7 * ss <= w <= 1.7 * ss and 0.75 * ss <= h <= 3.5 * ss):
+            continue
+        if not _has_stem(clean, x, y, w, h, ss):  # 기둥 없음 = 임시표·박자표 숫자 오탐
             continue
         cnt = max(1, round(h / ss)) if w <= 1.4 * ss else 1  # 세로로 붙은 화음(2도) → h/ss개로 분할
         cnt = min(cnt, 3)
@@ -178,7 +202,9 @@ def detect_heads(ink, staves):
         outside = max(s["lines"][0] - hd["y"], hd["y"] - s["lines"][4])
         if outside > 0.75 * ss and not _has_ledger(ink, hd["x"], hd["y"], ss):
             continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 같은 장식
-        if hd["x"] < (s["mask_x1"] if hd["hollow"] else s["clef_x1"]):  # 마스크: hollow만 조표까지, filled는 음자리표까지
+        # 마스크: hollow만 조표/박자표까지. filled에 적용하면 시스템 첫 음표 누락(스펙 §3 알려진 버그) →
+        # filled는 음자리표까지만 마스크하고 박자표 숫자·임시표 오탐은 _has_stem으로 거름
+        if hd["x"] < (s["mask_x1"] if hd["hollow"] else s["clef_x1"]):
             continue
         if any(abs(o["x"] - hd["x"]) <= 2 and abs(o["y"] - hd["y"]) <= 2 for o in out):
             continue
