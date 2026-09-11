@@ -2,7 +2,7 @@ name: deploy notune to lightsail
 on:
   push:
     branches: [claude/playwright-plugin-install-bgpysg]
-    paths: [notune/**]
+    paths: [notune/**, .github/workflows/deploy-notune.yml]
   workflow_dispatch: {}
 
 jobs:
