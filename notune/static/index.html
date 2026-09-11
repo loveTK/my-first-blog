@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notune</title>
+<style>
+body{background:#FAFAF7;color:#1C1C1C;font:16px/1.5 system-ui,sans-serif;max-width:640px;margin:48px auto;padding:0 16px}
+input,select,button{font:inherit;padding:8px 12px;margin:4px 0}
+button{background:#1F4FBF;color:#fff;border:0;cursor:pointer}
+img{max-width:100%;margin-top:24px}
+a{color:#1F4FBF}
+</style>
+<h1>Notune</h1>
+<p>악보(PDF/JPG/PNG)에 계이름을 기입합니다.</p>
+<form id="f">
+  <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required>
+  <select name="lang">
+    <option value="ko">도레미</option><option value="en">C D E</option><option value="it">Do Re Mi</option>
+    <option value="ja">ドレミ</option><option value="de">C D E (H)</option>
+  </select>
+  <select name="position"><option value="below">음표 아래</option><option value="above">음표 위</option></select>
+  <button>변환</button>
+</form>
+<p id="s"></p>
+<img id="img" hidden>
+<p><a id="dl" hidden>다운로드</a></p>
+<script>
+f.onsubmit = async e => {
+  e.preventDefault(); s.textContent = '처리 중…';
+  const r = await fetch('/convert', {method: 'POST', body: new FormData(f)});
+  if (!r.ok) { s.textContent = '실패: ' + await r.text(); return; }
+  const b = await r.blob(), u = URL.createObjectURL(b);
+  dl.href = u; dl.download = f.file.files[0].name.replace(/\.(\w+)$/, '_plus.$1'); dl.hidden = false;
+  img.hidden = !b.type.startsWith('image'); if (!img.hidden) img.src = u;
+  s.textContent = '완료';
+};
+</script>
