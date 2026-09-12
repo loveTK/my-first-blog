@@ -151,6 +151,7 @@ def detect_heads(page_rgb, staves):
     ss = float(np.median([s["space"] for s in staves]))
     if not os.path.exists(WEIGHTS):  # 가중치 미배포 상태(학습 중)엔 빈 결과 — 서비스는 안 죽게
         return []
+    ink = binarize(cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY))
     out = []
     for d in detect_symbols(page_rgb, ss):
         if not d["cls"].startswith("notehead"):
@@ -159,8 +160,19 @@ def detect_heads(page_rgb, staves):
         s = staves[si]
         if not (s["lines"][0] - 6 * ss < d["y"] < s["lines"][4] + 6 * ss) or d["x"] > s["x1"] + ss:
             continue
+        outside = max(s["lines"][0] - d["y"], d["y"] - s["lines"][4])
+        if outside > 0.75 * ss and not _has_ledger(ink, d["x"], d["y"], ss):
+            continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 머리
         out.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
     return out
+
+
+def _has_ledger(ink, x, y, ss):
+    """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
+    half = int(0.9 * ss)
+    rows = ink[max(int(y - 0.6 * ss), 0):int(y + 0.6 * ss) + 1, max(x - half, 0):x + half + 1] > 0
+    assert rows.size
+    return bool(rows.all(axis=1).any())
 
 
 def detect_notes(page_rgb):
