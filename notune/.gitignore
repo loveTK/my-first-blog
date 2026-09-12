@@ -1,0 +1,7 @@
+runs/
+train/runs/
+*.pt
+*.onnx
+!weights/notes.onnx
+tests/fixtures/*
+!tests/fixtures/.gitkeep

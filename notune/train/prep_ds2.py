@@ -12,7 +12,7 @@ import cv2
 TILE, STRIDE = 1024, 896  # 128px 겹침
 CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
 # DS2 카테고리명 부분 문자열 → 우리 클래스. OnLine/InSpace/Small 변형은 전부 같은 클래스로 합침
-NAME_MAP = [("noteheadBlack", 0), ("noteheadHalf", 1), ("noteheadWhole", 2), ("noteheadDoubleWhole", 2),
+NAME_MAP = [("noteheadBlack", 0), ("noteheadFull", 0), ("noteheadHalf", 1), ("noteheadWhole", 2), ("noteheadDoubleWhole", 2),
             ("accidentalSharp", 3), ("keySharp", 3), ("accidentalFlat", 4), ("keyFlat", 4),
             ("accidentalNatural", 5), ("keyNatural", 5), ("clefG", 6), ("clefF", 7), ("clefC", 8)]
 

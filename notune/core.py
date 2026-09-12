@@ -1,4 +1,6 @@
 """검출 → 음높이 → 라벨 위치. 3~7단계에서 채운다."""
+import os
+
 import cv2
 import numpy as np
 
@@ -89,127 +91,73 @@ def _clef_key_end(ink, ys, space, x0):
     return clef_x1, end
 
 
-def remove_lines(ink, ss):
-    """오선·덧줄 같은 얇은 가로선 픽셀 제거. 세로로 선보다 두꺼운 잉크(음표·기둥·빔)는 남김."""
-    h, w = ink.shape
-    row_ink = (ink > 0).sum(axis=1)
-    is_line = row_ink > 0.4 * w
-    runs, y = [], 0
-    while y < h:  # 오선 두께 측정
-        if is_line[y]:
-            y0 = y
-            while y < h and is_line[y]:
-                y += 1
-            runs.append(y - y0)
-        y += 1
-    assert runs
-    thick = max(int(np.median(runs)), 2)  # 덧줄은 오선보다 굵게(3px) 찍히는 경우 있어 최소 2
-    horiz = cv2.morphologyEx(ink, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (int(1.4 * ss), 1)))
-    on = ink > 0
-    down = np.zeros((h, w), np.int32)  # 위에서부터 이어진 잉크 길이
-    for r in range(1, h):
-        down[r] = np.where(on[r], down[r - 1] + 1, 0)
-    up = np.zeros((h, w), np.int32)
-    for r in range(h - 2, -1, -1):
-        up[r] = np.where(on[r], up[r + 1] + 1, 0)
-    vrun = down + up - 1  # 둘 다 자기 자신 포함 → 세로 잉크 길이
-    out = ink.copy()
-    out[(horiz > 0) & (vrun <= thick + 1)] = 0
-    assert out.sum() < ink.sum()
-    return out
+TRAIN_SS = 16.5  # 학습 데이터(DeepScoresV2) staff space(px). 추론 전 페이지를 이 크기로 맞춤
+TILE, STRIDE = 1024, 896
+CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
+WEIGHTS = os.environ.get("NOTUNE_WEIGHTS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "notes.onnx"))
+_sess = None
 
 
-def _has_stem(clean, x, y, w, h, ss):
-    """filled 머리는 항상 기둥(세로선)이 붙어있다(온음표 제외, 온음표=hollow라 여긴 안 옴).
-    머리 좌/우 끝에서 머리 높이보다 위/아래로 더 뻗은 얇은 세로 잉크 = 기둥.
-    숫자(박자표)·임시표는 기둥이 없어 걸러짐."""
-    H, W = clean.shape
-    need = int(h + 0.8 * ss)
-    margin = max(int(0.3 * w), 2)
-    cols = list(range(max(x - 1, 0), min(x + margin, W))) + list(range(max(x + w - margin, 0), min(x + w + 1, W)))
-    band = clean[max(y - int(1.5 * ss), 0):min(y + h + int(1.5 * ss), H)][:, cols] > 0
-    for c in range(band.shape[1]):
-        col = band[:, c]
-        runs, cur = [], 0
-        for v in col:
-            cur = cur + 1 if v else 0
-            runs.append(cur)
-        if max(runs, default=0) >= need:
-            return True
-    return False
+def _session():
+    global _sess
+    if _sess is None:
+        import onnxruntime as ort
+        _sess = ort.InferenceSession(WEIGHTS, providers=["CPUExecutionProvider"])
+    return _sess
 
 
-def _has_ledger(ink, x, y, ss):
-    """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
-    half = int(0.9 * ss)
-    rows = ink[max(int(y - 0.6 * ss), 0):int(y + 0.6 * ss) + 1, max(x - half, 0):x + half + 1] > 0
-    assert rows.size
-    return bool(rows.all(axis=1).any())
+def detect_symbols(page_rgb, ss, conf=0.3):
+    """YOLO(ONNX) 타일 추론 → [{"x","y","w","h","cls","conf"}] (페이지 픽셀 좌표, x/y=중심).
+    페이지를 학습 staff space로 리사이즈 → 1024 타일(겹침 128) → 클래스 무관 NMS."""
+    scale = TRAIN_SS / ss
+    img = cv2.resize(page_rgb, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+    H, W = img.shape[:2]
+    if H < TILE or W < TILE:
+        img = cv2.copyMakeBorder(img, 0, max(TILE - H, 0), 0, max(TILE - W, 0), cv2.BORDER_CONSTANT, value=(255, 255, 255))
+        H, W = img.shape[:2]
+    ys = sorted(set(list(range(0, H - TILE + 1, STRIDE)) + [H - TILE]))
+    xs = sorted(set(list(range(0, W - TILE + 1, STRIDE)) + [W - TILE]))
+    sess, name = _session(), _session().get_inputs()[0].name
+    boxes, scores, clss = [], [], []
+    for ty in ys:
+        for tx in xs:
+            tile = img[ty:ty + TILE, tx:tx + TILE].transpose(2, 0, 1)[None].astype(np.float32) / 255.0
+            out = sess.run(None, {name: tile})[0][0]  # (4+nc, N): cx,cy,w,h, class scores
+            sc = out[4:]
+            cls = sc.argmax(axis=0)
+            cf = sc.max(axis=0)
+            keep = cf > conf
+            for (cx, cy, w, h), c, f in zip(out[:4].T[keep], cls[keep], cf[keep]):
+                boxes.append([float(cx - w / 2 + tx), float(cy - h / 2 + ty), float(w), float(h)])
+                scores.append(float(f))
+                clss.append(int(c))
+    dets = []
+    if boxes:
+        idx = cv2.dnn.NMSBoxes(boxes, scores, conf, 0.5)
+        for i in np.array(idx).reshape(-1):
+            x, y, w, h = boxes[i]
+            dets.append({"x": int((x + w / 2) / scale), "y": int((y + h / 2) / scale), "w": w / scale, "h": h / scale,
+                         "cls": CLASSES[clss[i]] if clss[i] < len(CLASSES) else str(clss[i]), "conf": scores[i]})
+    assert isinstance(dets, list)
+    return dets
 
 
 def _staff_of(y, staves):
     return min(range(len(staves)), key=lambda i: abs((staves[i]["lines"][0] + staves[i]["lines"][4]) / 2 - y))
 
 
-def detect_heads(ink, staves):
-    """음표 머리 → [{"x","y","staff","hollow"}]. filled=열림 연산 잔존 덩어리, hollow=윤곽 계층의 구멍."""
+def detect_heads(page_rgb, staves):
+    """음표 머리 → [{"x","y","staff","hollow"}]. YOLO 검출 중 notehead_* 클래스만."""
     ss = float(np.median([s["space"] for s in staves]))
-    clean = remove_lines(ink, ss)
-    heads = []
-
-    # filled: 기둥·빔·플래그(얇음)는 타원 커널 열림으로 사라지고 머리(≈1.2ss×1ss)만 남음
-    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (int(0.8 * ss), int(0.6 * ss)))
-    opened = cv2.morphologyEx(clean, cv2.MORPH_OPEN, k)
-    n, _, stats, _ = cv2.connectedComponentsWithStats(opened)
-    for i in range(1, n):
-        x, y, w, h, area = stats[i]
-        # 높이 <0.75ss: 기울어진 빔이 오선과 겹쳐 두꺼워진 조각(커널 높이만큼만 남음). 머리는 ≈1ss
-        if not (0.7 * ss <= w <= 1.7 * ss and 0.75 * ss <= h <= 3.5 * ss):
-            continue
-        if not _has_stem(clean, x, y, w, h, ss):  # 기둥 없음 = 임시표·박자표 숫자 오탐
-            continue
-        cnt = max(1, round(h / ss)) if w <= 1.4 * ss else 1  # 세로로 붙은 화음(2도) → h/ss개로 분할
-        cnt = min(cnt, 3)
-        for j in range(cnt):
-            heads.append({"x": int(x + w / 2), "y": int(y + h * (j + 0.5) / cnt), "hollow": False})
-
-    # hollow: 구멍 크기가 머리 안쪽(≈0.8ss×0.6ss)인 윤곽. 조표/음자리표 영역은 마스크
-    contours, hier = cv2.findContours(clean, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-    assert hier is not None
-    for c, hh in zip(contours, hier[0]):
-        if hh[3] == -1:  # 바깥 윤곽은 건너뜀, 구멍만
-            continue
-        x, y, w, h = cv2.boundingRect(c)
-        pw, ph = cv2.boundingRect(contours[hh[3]])[2:]  # 부모(바깥) 크기
-        # 부모 폭 <1ss: ♮♯·숫자. 부모 높이 1.2~2.5ss: ❋(페달)·8va 숫자 (온음표≈1ss, 2분음표+기둥≥2.5ss)
-        # 구멍 폭 ≥0.7ss: ♯♮ 안쪽·8va 숫자 구멍(≤0.65ss) 제외. 온음표 0.8, 2분음표 0.85 정도
-        if not (0.7 * ss <= w <= 1.3 * ss and 0.35 * ss <= h <= 1.1 * ss and cv2.contourArea(c) > 0.35 * w * h):
-            continue
-        if pw < 1.0 * ss or 1.2 * ss < ph < 2.5 * ss:
-            continue
-        cx, cy = int(x + w / 2), int(y + h / 2)
-        if any(abs(o["x"] - cx) < 0.6 * ss and abs(o["y"] - cy) < 0.6 * ss for o in heads):
-            continue  # 화음 머리·기둥 사이 틈은 구멍처럼 보임 → filled 머리 근처 구멍 무시
-        heads.append({"x": cx, "y": cy, "hollow": True})
-
-    # 오선 소속 + 영역 필터 + 중복 병합
     out = []
-    for hd in heads:
-        si = _staff_of(hd["y"], staves)
+    for d in detect_symbols(page_rgb, ss):
+        if not d["cls"].startswith("notehead"):
+            continue
+        si = _staff_of(d["y"], staves)
         s = staves[si]
-        if not (s["lines"][0] - 5 * ss < hd["y"] < s["lines"][4] + 5 * ss) or hd["x"] > s["x1"]:
+        if not (s["lines"][0] - 6 * ss < d["y"] < s["lines"][4] + 6 * ss) or d["x"] > s["x1"] + ss:
             continue
-        outside = max(s["lines"][0] - hd["y"], hd["y"] - s["lines"][4])
-        if outside > 0.75 * ss and not _has_ledger(ink, hd["x"], hd["y"], ss):
-            continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 같은 장식
-        # 마스크: hollow만 조표/박자표까지. filled에 적용하면 시스템 첫 음표 누락(스펙 §3 알려진 버그) →
-        # filled는 음자리표까지만 마스크하고 박자표 숫자·임시표 오탐은 _has_stem으로 거름
-        if hd["x"] < (s["mask_x1"] if hd["hollow"] else s["clef_x1"]):
-            continue
-        if any(abs(o["x"] - hd["x"]) <= 2 and abs(o["y"] - hd["y"]) <= 2 for o in out):
-            continue
-        hd["staff"] = si
-        out.append(hd)
+        out.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
     return out
 
 
@@ -218,7 +166,7 @@ def detect_notes(page_rgb):
     gray = cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY)
     ink = binarize(gray)
     staves = detect_staves(ink)
-    heads = detect_heads(ink, staves)
+    heads = detect_heads(page_rgb, staves)
     assert isinstance(heads, list)
     # ponytail: 5단계에서 pitch 채움. 지금은 None.
     return [{"x": h["x"], "y": h["y"], "pitch": None} for h in heads]

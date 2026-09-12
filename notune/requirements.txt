@@ -5,3 +5,4 @@ pdf2image
 fastapi
 uvicorn
 python-multipart
+onnxruntime
