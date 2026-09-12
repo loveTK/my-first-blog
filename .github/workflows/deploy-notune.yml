@@ -42,7 +42,7 @@ jobs:
           else
             aws lightsail create-distribution \
               --distribution-name notune-cdn \
-              --origin resourceName=notune,regionName=${{ secrets.AWS_REGION }} \
+              --origin name=notune,regionName=${{ secrets.AWS_REGION }} \
               --default-cache-behavior behavior=dont-cache \
               --bundle-id small_1_0
           fi
