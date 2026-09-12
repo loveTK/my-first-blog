@@ -252,6 +252,25 @@ def detect_notes(page_rgb):
     return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"]} for h in heads]
 
 
+NAMES = {  # 고정도: C=도. 옥타브는 표기 안 함
+    "ko": ["도", "레", "미", "파", "솔", "라", "시"],
+    "en": ["C", "D", "E", "F", "G", "A", "B"],
+    "it": ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"],
+    "ja": ["ド", "レ", "ミ", "ファ", "ソ", "ラ", "シ"],
+    "de": ["C", "D", "E", "F", "G", "A", "H"],
+}
+
+
+def note_name(pitch, lang):
+    """'F#5' → '파♯' / 'F♯' / 'Fis' 등. 독일식은 -is/-es, 예외 Es·As·B(=Hb)."""
+    assert lang in NAMES and pitch[0] in LETTERS, (pitch, lang)
+    alter = pitch[1] if len(pitch) > 1 and pitch[1] in "#b" else ""
+    name = NAMES[lang][LETTERS.index(pitch[0])]
+    if lang == "de":
+        return name + "is" if alter == "#" else {"E": "Es", "A": "As", "H": "B"}.get(name, name + "es") if alter == "b" else name
+    return name + {"#": "♯", "b": "♭", "": ""}[alter]
+
+
 def place_labels(notes, lang, position):
     """음표 → [{"x","y","text","clef"}] 라벨 위치. 6단계(언어) + 7단계(배치)."""
     assert position in ("below", "above"), position
