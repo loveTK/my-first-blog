@@ -1,9 +1,9 @@
 # Render 배포 시 Root Directory를 notune/ 로 지정.
 FROM python:3.11-slim
 
-# poppler=pdf2image, fonts-nanum=한글 라벨, libgl1/libglib2.0=opencv-python(비-headless) 런타임 의존성
+# poppler=pdf2image, fonts-noto-cjk=한/일/중 라벨(ko/ja 지원), libgl1/libglib2.0=opencv-python(비-headless) 런타임 의존성
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    poppler-utils fonts-nanum libgl1 libglib2.0-0 \
+    poppler-utils fonts-noto-cjk libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

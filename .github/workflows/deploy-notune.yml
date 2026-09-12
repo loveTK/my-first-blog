@@ -35,3 +35,14 @@ jobs:
             --service-name notune \
             --containers file://deploy.json \
             --public-endpoint '{"containerName":"notune","containerPort":8000,"healthCheck":{"path":"/"}}'
+      - name: CDN 배포(전세계 엣지 라우팅, 이미 있으면 건너뜀) — 월 ~$2.50 추가 과금
+        run: |
+          if aws lightsail get-distributions --distribution-name notune-cdn >/dev/null 2>&1; then
+            echo "notune-cdn 이미 있음, 건너뜀"
+          else
+            aws lightsail create-distribution \
+              --distribution-name notune-cdn \
+              --origin resourceName=notune,regionName=${{ secrets.AWS_REGION }} \
+              --default-cache-behavior behavior=dont-cache \
+              --bundle-id small_1_0
+          fi

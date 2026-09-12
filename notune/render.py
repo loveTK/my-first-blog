@@ -7,10 +7,15 @@ RED, BLUE = "#C8102E", "#1F4FBF"  # 높은음자리 / 낮은음자리
 
 
 def font(size):
-    for p in ("C:/Windows/Fonts/malgunbd.ttf", "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"):
+    # Noto Sans CJK 하나로 ko/ja/zh 다 커버(한글+가나+한자). 라틴(en/it/de)도 같은 폰트에 포함.
+    for p in (
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "C:/Windows/Fonts/malgunbd.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    ):
         if os.path.exists(p):
             return ImageFont.truetype(p, size)
-    return ImageFont.load_default()  # ponytail: 한글 폰트 없으면 □로 나옴
+    return ImageFont.load_default()  # ponytail: 폰트 없으면 □로 나옴
 
 
 def overlay(page_rgb, labels):
