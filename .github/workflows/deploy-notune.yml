@@ -27,6 +27,8 @@ jobs:
             --service-name notune --label notune --image notune \
             | tee push.log
           echo "image=$(grep -oP '(?<=Refer to this image as ")[^"]+' push.log)" >> "$GITHUB_OUTPUT"
+      - name: 서버 사양 micro(1GB, $10/월)로 — YOLO ONNX 추론 메모리. 이미 micro면 no-op
+        run: aws lightsail update-container-service --service-name notune --power micro --scale 1
       - run: |
           cat > deploy.json <<EOF
           {"notune": {"image": "${{ steps.push.outputs.image }}", "ports": {"8000": "HTTP"}}}
