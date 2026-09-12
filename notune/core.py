@@ -146,14 +146,97 @@ def _staff_of(y, staves):
     return min(range(len(staves)), key=lambda i: abs((staves[i]["lines"][0] + staves[i]["lines"][4]) / 2 - y))
 
 
-def detect_heads(page_rgb, staves):
-    """음표 머리 → [{"x","y","staff","hollow"}]. YOLO 검출 중 notehead_* 클래스만."""
+def _has_ledger(ink, x, y, ss):
+    """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
+    half = int(0.9 * ss)
+    rows = ink[max(int(y - 0.6 * ss), 0):int(y + 0.6 * ss) + 1, max(x - half, 0):x + half + 1] > 0
+    assert rows.size
+    return bool(rows.all(axis=1).any())
+
+
+def detect_barlines(ink, s, heads, ss):
+    """마디선 x 목록. 오선 1~5줄을 세로로 꽉 채운 얇은 잉크 열 중 음표머리(기둥) 근처가 아닌 것."""
+    top, bot = int(s["lines"][0]) + 1, int(s["lines"][4])  # 오선 안쪽만. 바깥 1px는 마디선이 정확히 줄에서 끝나 비어있음
+    full = (ink[top:bot, s["x0"]:s["x1"] + 1] > 0).all(axis=0)
+    hx = np.array([h["x"] for h in heads]) if heads else np.zeros(0)
+    xs, x = [], 0
+    while x < len(full):
+        if full[x]:
+            x0 = x
+            while x < len(full) and full[x]:
+                x += 1
+            cx = s["x0"] + (x0 + x - 1) / 2
+            if x - x0 <= 0.35 * ss and (hx.size == 0 or np.abs(hx - cx).min() > 0.9 * ss):
+                if not xs or cx - xs[-1] > 1.0 * ss:  # 겹마디선은 하나로
+                    xs.append(cx)
+        x += 1
+    return xs
+
+
+LETTERS = "CDEFGAB"
+CLEF_BOTTOM = {"clef_g": 4 * 7 + 2, "clef_f": 2 * 7 + 4, "clef_c": 3 * 7 + 3}  # 맨 아래 줄 = E4 / G2 / F3 (7음계 절대 인덱스)
+
+
+def _step_pitch(y, s, clef):
+    """머리 y → (계이름 글자, 옥타브). 맨 아래 줄에서 반칸(ss/2) 단위로 올라간 수 = 음계 계단."""
+    step = int(round((s["lines"][4] - y) / (s["space"] / 2)))
+    idx = CLEF_BOTTOM[clef] + step
+    assert 0 <= idx < 9 * 7, (y, clef)
+    return LETTERS[idx % 7], idx // 7
+
+
+def assign_pitches(ink, staves, dets, heads):
+    """음자리표·조표·임시표(마디 내 유지) 반영해 heads에 pitch 채움. 반환: heads (pitch, clef 추가)."""
     ss = float(np.median([s["space"] for s in staves]))
+    by_staff = {i: [] for i in range(len(staves))}
+    for d in dets:
+        if d["cls"].startswith("notehead"):
+            continue
+        si = _staff_of(d["y"], staves)
+        if abs(d["y"] - (staves[si]["lines"][0] + staves[si]["lines"][4]) / 2) < 4 * ss:
+            by_staff[si].append(d)
+    for si, s in enumerate(staves):
+        hs = sorted((h for h in heads if h["staff"] == si), key=lambda h: h["x"])
+        syms = sorted(by_staff[si], key=lambda d: d["x"])
+        clefs = [d for d in syms if d["cls"].startswith("clef")] or [{"x": s["x0"], "cls": "clef_g"}]  # ponytail: 음자리표 못 찾으면 높은음자리표
+        bars = detect_barlines(ink, s, hs, ss)
+        key, measure_acc, cur_bar, cur_clef = {}, {}, -1, clefs[0]["cls"]
+        events = [("clef", d["x"], d) for d in clefs] + [("acc", d["x"], d) for d in syms if not d["cls"].startswith("clef")] + [("head", h["x"], h) for h in hs]
+        events.sort(key=lambda e: e[1])
+        for kind, x, d in events:
+            bar = sum(1 for b in bars if b < x)
+            if bar != cur_bar:
+                cur_bar, measure_acc = bar, {}
+            if kind == "clef":
+                cur_clef = d["cls"]
+            elif kind == "acc":
+                alter = {"sharp": 1, "flat": -1, "natural": 0}[d["cls"]]
+                ay = d["y"] + 0.28 * d["h"] if d["cls"] == "flat" else d["y"]  # ♭은 고리(아래쪽)가 음 위치. 박스 중심은 0.7ss 위
+                letter, octv = _step_pitch(ay, s, cur_clef)
+                # 바로 오른쪽(0.3~3ss)에 같은 높이 머리가 있으면 그 음표의 임시표, 아니면 조표
+                attached = any(0.3 * ss < h["x"] - x < 3.0 * ss and abs(h["y"] - ay) < 0.6 * ss for h in hs)
+                if attached:
+                    measure_acc[(letter, octv)] = alter
+                else:
+                    key[letter] = alter
+            else:
+                letter, octv = _step_pitch(d["y"], s, cur_clef)
+                alter = measure_acc.get((letter, octv), key.get(letter, 0))
+                d["pitch"] = f"{letter}{'#' if alter > 0 else 'b' if alter < 0 else ''}{octv}"
+                d["clef"] = "bass" if cur_clef == "clef_f" else "treble"
+    return heads
+
+
+def detect_notes(page_rgb):
+    """음표 머리 검출 + 음높이 → [{"x","y","pitch","clef"}]. pitch 예: C4, F#5, Bb3."""
+    ink = binarize(cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY))
+    staves = detect_staves(ink)
     if not os.path.exists(WEIGHTS):  # 가중치 미배포 상태(학습 중)엔 빈 결과 — 서비스는 안 죽게
         return []
-    ink = binarize(cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY))
-    out = []
-    for d in detect_symbols(page_rgb, ss):
+    ss = float(np.median([s["space"] for s in staves]))
+    dets = detect_symbols(page_rgb, ss)
+    heads = []
+    for d in dets:
         if not d["cls"].startswith("notehead"):
             continue
         si = _staff_of(d["y"], staves)
@@ -163,27 +246,10 @@ def detect_heads(page_rgb, staves):
         outside = max(s["lines"][0] - d["y"], d["y"] - s["lines"][4])
         if outside > 0.75 * ss and not _has_ledger(ink, d["x"], d["y"], ss):
             continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 머리
-        out.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
-    return out
-
-
-def _has_ledger(ink, x, y, ss):
-    """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
-    half = int(0.9 * ss)
-    rows = ink[max(int(y - 0.6 * ss), 0):int(y + 0.6 * ss) + 1, max(x - half, 0):x + half + 1] > 0
-    assert rows.size
-    return bool(rows.all(axis=1).any())
-
-
-def detect_notes(page_rgb):
-    """음표 머리 검출 + 음높이 → [{"x": int, "y": int, "pitch": "C4"}]."""
-    gray = cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY)
-    ink = binarize(gray)
-    staves = detect_staves(ink)
-    heads = detect_heads(page_rgb, staves)
-    assert isinstance(heads, list)
-    # ponytail: 5단계에서 pitch 채움. 지금은 None.
-    return [{"x": h["x"], "y": h["y"], "pitch": None} for h in heads]
+        heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black"})
+    assign_pitches(ink, staves, dets, heads)
+    assert all("pitch" in h for h in heads)
+    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"]} for h in heads]
 
 
 def place_labels(notes, lang, position):
