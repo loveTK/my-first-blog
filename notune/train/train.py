@@ -6,11 +6,13 @@ import sys
 
 from ultralytics import YOLO
 
-data, epochs = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 30
+data = sys.argv[1]
+epochs = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+fraction = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0  # CPU 4코어: 6s/배치라 타일 40%·12에폭 ≈ 4시간
 runs = os.path.abspath("train/runs")  # 상대경로 주면 ultralytics가 runs/detect/ 밑에 또 넣어버림
 m = YOLO("yolov8n.pt")
 # ponytail: CPU 학습 전제(GPU 있으면 device=0). 악보는 회전/좌우반전 의미 없어서 augment 끔.
-m.train(data=data, imgsz=1024, epochs=epochs, batch=8, workers=2, fliplr=0.0, mosaic=0.5,
+m.train(data=data, imgsz=1024, epochs=epochs, batch=8, workers=2, fraction=fraction, fliplr=0.0, mosaic=0.0,
         hsv_h=0.0, hsv_s=0.0, degrees=0.0, project=runs, name="notes", exist_ok=True)
 best = os.path.join(runs, "notes", "weights", "best.pt")
 assert os.path.exists(best), best

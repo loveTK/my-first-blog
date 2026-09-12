@@ -149,6 +149,8 @@ def _staff_of(y, staves):
 def detect_heads(page_rgb, staves):
     """음표 머리 → [{"x","y","staff","hollow"}]. YOLO 검출 중 notehead_* 클래스만."""
     ss = float(np.median([s["space"] for s in staves]))
+    if not os.path.exists(WEIGHTS):  # 가중치 미배포 상태(학습 중)엔 빈 결과 — 서비스는 안 죽게
+        return []
     out = []
     for d in detect_symbols(page_rgb, ss):
         if not d["cls"].startswith("notehead"):
