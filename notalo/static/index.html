@@ -11,8 +11,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500&display=swap">
 <style>
-:root{--bg:#F5F5F0;--fg:#1B1B18;--muted:#6E6E66;--line:#DEDED6;--accent:#E8632B;--accent-ink:#B94A1C;--panel:#FFFFFF;--err:#B3261E;--r:6px}
-@media(prefers-color-scheme:dark){:root{--bg:#1A1A17;--fg:#EDECE4;--muted:#A09F96;--line:#3A3A34;--accent:#F07A45;--accent-ink:#F9A07A;--panel:#232320;--err:#F28B82}}
+:root{--bg:#F5F5F0;--fg:#1B1B18;--muted:#6E6E66;--line:#DEDED6;--accent:#1F7A4A;--accent-ink:#165A37;--panel:#FFFFFF;--err:#B3261E;--r:6px}
+@media(prefers-color-scheme:dark){:root{--bg:#1A1A17;--fg:#EDECE4;--muted:#A09F96;--line:#3A3A34;--accent:#3FA46C;--accent-ink:#8ED5AE;--panel:#232320;--err:#F28B82}}
 *{box-sizing:border-box}
 html{background:var(--bg);scroll-behavior:smooth}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
@@ -55,18 +55,27 @@ nav{display:flex;align-items:center;gap:6px}
   .hero figure{transform:none}
 }
 
-/* 업로드 (2단계에서 손봄) */
-.tool{border-top:1px solid var(--line);padding:40px 0 8px}
-.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:44px 20px;text-align:center;cursor:pointer;background:var(--panel);transition:border-color .15s}
+/* 업로드 */
+.tool{border-top:1px solid var(--line);padding:48px 0 8px}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:48px 20px;text-align:center;cursor:pointer;background:var(--panel);transition:border-color .15s,background .15s}
 .drop:hover,.drop.over{border-color:var(--accent)}
+.drop.has{border-style:solid;border-color:var(--accent)}
 .drop strong{display:block;font-weight:500;margin-bottom:4px}
 .drop span{color:var(--muted);font-size:14px}
 .drop input{display:none}
-.file{margin:10px 0 0;font-size:14px;min-height:22px}
-.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
-@media(max-width:640px){.opts{grid-template-columns:1fr}}
+.file{display:none;margin:0;font-weight:500;color:var(--accent-ink)}
+.drop.has .file{display:block}
+.drop.has strong,.drop.has .hint,.drop .sw{display:none}
+.drop.has .sw{display:inline}
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:24px 0}
+@media(max-width:640px){.opts{grid-template-columns:1fr;gap:14px}}
 label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
-select{width:100%;font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+select{width:100%;font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 36px 11px 12px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236E6E66' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+select:hover{border-color:var(--fg)}
+.act{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.credits{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.credits.out{color:var(--fg)}
+.btn-s{padding:7px 12px;font-size:14px}
 .status{margin:14px 0 0;font-size:14px;min-height:22px}
 .status.err{color:var(--err)}
 
@@ -112,10 +121,11 @@ footer p{margin:4px 0}
   <form id="f">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="악보 파일 선택">
       <strong>악보 파일을 여기에 끌어다 놓거나 클릭</strong>
-      <span>PDF, JPG, PNG · 20MB까지</span>
+      <p class="file" id="fname"></p>
+      <span class="hint">PDF, JPG, PNG · 20MB까지</span>
+      <span class="sw">클릭해서 다른 파일로 바꾸기</span>
       <input type="file" name="file" id="file" accept=".pdf,.jpg,.jpeg,.png" required>
     </div>
-    <p class="file" id="fname"></p>
 
     <div class="opts">
       <div><label for="lang">계이름 표기</label>
@@ -129,9 +139,11 @@ footer p{margin:4px 0}
         <select name="mode" id="mode"><option value="greedy">겹침 피해 배치</option><option value="lane">줄 맞춰 배치</option><option value="overlay">음표 위에 덮기</option></select></div>
     </div>
 
-    <button class="btn-p" id="go">계이름 넣기</button>
+    <div class="act">
+      <button class="btn-p" id="go">계이름 넣기</button>
+      <p class="credits" id="credits"></p>
+    </div>
     <p class="status" id="s"></p>
-    <p class="status" id="credits"></p>
   </form>
 
   <section class="result" id="result" hidden>
@@ -151,7 +163,7 @@ footer p{margin:4px 0}
 const $ = id => document.getElementById(id);
 const drop = $('drop'), file = $('file'), fname = $('fname'), s = $('s'), go = $('go');
 const show = (el, on) => { el.hidden = !on; };
-const pick = f => { if (f) { file.files = f; } fname.textContent = file.files[0] ? file.files[0].name : ''; };
+const pick = f => { if (f) { file.files = f; } const n = file.files[0]?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n); };
 drop.onclick = () => file.click();
 $('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
 drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } };
@@ -159,11 +171,14 @@ file.onchange = () => pick();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files); };
-const credits = async () => {
-  try { const { left } = await (await fetch('/credits')).json();
-    $('credits').textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다. 결제 기능은 준비 중입니다.';
-  } catch (_) {}
+const openPricing = () => { const el = $('pricing'); if (el) el.scrollIntoView({ block: 'start' }); };
+$('pricing-btn').onclick = openPricing;
+const showCredits = left => {
+  const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out');
+  c.textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다.';
+  if (left <= 0) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-o btn-s'; b.textContent = '요금제 보기'; b.onclick = openPricing; c.append(b); }
 };
+const credits = async () => { try { showCredits((await (await fetch('/credits')).json()).left); } catch (_) {} };
 credits();
 
 $('f').onsubmit = async e => {
