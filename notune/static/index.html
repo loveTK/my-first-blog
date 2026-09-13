@@ -64,6 +64,7 @@ footer p{margin:4px 0}
 
     <button id="go">계이름 넣기</button>
     <p class="status" id="s"></p>
+    <p class="status" id="credits"></p>
   </form>
 
   <section class="result" id="result" hidden>
@@ -89,6 +90,12 @@ file.onchange = () => pick();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files); };
+const credits = async () => {
+  try { const { left } = await (await fetch('/credits')).json();
+    $('credits').textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다. 결제 기능은 준비 중입니다.';
+  } catch (_) {}
+};
+credits();
 
 $('f').onsubmit = async e => {
   e.preventDefault();
@@ -107,7 +114,7 @@ $('f').onsubmit = async e => {
     const dl = $('dl'); dl.href = u; dl.download = file.files[0].name.replace(/\.(\w+)$/, '_plus.$1');
     show($('skel'), false); show(dl, true);
     if (isPdf) show($('pdfnote'), true); else { $('img').src = u; show($('img'), true); }
-    s.textContent = '완료';
+    s.textContent = '완료'; credits();
   } catch (err) {
     show($('result'), false); s.className = 'status err'; s.textContent = err.message;
   } finally { go.disabled = false; }
