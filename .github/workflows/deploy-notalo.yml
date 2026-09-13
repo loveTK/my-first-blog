@@ -32,7 +32,8 @@ jobs:
       - run: |
           cat > deploy.json <<EOF
           {"notune": {"image": "${{ steps.push.outputs.image }}", "ports": {"8000": "HTTP"},
-                      "environment": {"NOTALO_SECRET": "${{ secrets.NOTALO_SECRET }}"}}}
+                      "environment": {"NOTALO_SECRET": "${{ secrets.NOTALO_SECRET }}", "SMTP_USER": "${{ secrets.SMTP_USER }}",
+                                      "SMTP_PASS": "${{ secrets.SMTP_PASS }}", "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}"}}}
           EOF
           aws lightsail create-container-service-deployment \
             --service-name notune \

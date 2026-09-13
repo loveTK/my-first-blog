@@ -237,6 +237,7 @@ footer p{margin:4px 0}
 <dialog id="login" aria-labelledby="login-title">
   <button class="x" type="button" id="login-x" aria-label="닫기">&times;</button>
   <h2 id="login-title">로그인</h2>
+  <div id="gsi"></div>
   <button class="google" type="button" id="google-btn">
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
     Google로 계속하기
@@ -273,8 +274,13 @@ const openPricing = () => $('pricing').scrollIntoView({ block: 'start' });
 $('pricing-btn').onclick = openPricing;
 $('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
 
-// 로그인 (UI만. 인증 백엔드는 다음 단계)
+// 로그인
 const login = $('login'), msg = $('login-msg');
+const api = async (path, body) => {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { let d = '실패했습니다.'; try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
+  return r.status === 204 ? null : r.json();
+};
 let signup = false;
 const setMode = on => { signup = on; $('login-title').textContent = on ? '회원가입' : '로그인'; $('login-submit').textContent = on ? '인증 메일 받고 가입하기' : '로그인';
   show($('signup-tip'), on); $('pw').autocomplete = on ? 'new-password' : 'current-password'; msg.textContent = '';
@@ -283,11 +289,35 @@ const setMode = on => { signup = on; $('login-title').textContent = on ? '회원
 $('login-btn').onclick = () => { setMode(false); login.showModal(); };
 $('login-x').onclick = () => login.close();
 login.onclick = e => { if (e.target === login) login.close(); };
-$('google-btn').onclick = () => { msg.textContent = 'Google 로그인은 준비 중입니다.'; };
-$('login-form').onsubmit = e => { e.preventDefault(); msg.textContent = signup ? '이메일 인증 가입은 준비 중입니다.' : '이메일 로그인은 준비 중입니다.'; };
 const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
-$('logout-btn').onclick = () => setUser(null);
+$('logout-btn').onclick = async () => { await api('/auth/logout', {}); setUser(null); };
+$('google-btn').onclick = () => { msg.textContent = 'Google 로그인은 준비 중입니다.'; };
+$('login-form').onsubmit = async e => {
+  e.preventDefault(); msg.textContent = '';
+  const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
+  btn.disabled = true;
+  try {
+    if (signup) { await api('/auth/signup', body); msg.textContent = `${body.email} 으로 인증 메일을 보냈어요. 메일의 링크를 눌러 주세요.`; }
+    else { const { email } = await api('/auth/login', body); setUser(email); login.close(); }
+  } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
+};
 setMode(false);
+(async () => {
+  try {
+    const { email } = await (await fetch('/auth/me')).json(); setUser(email);
+    if (location.search.includes('verified=1')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 로그인되었습니다.'; }
+    const { google_client_id } = await (await fetch('/auth/config')).json();
+    if (!google_client_id) return;
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = () => {
+      google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
+        try { const { email } = await api('/auth/google', { credential }); setUser(email); login.close(); } catch (err) { msg.textContent = err.message; } } });
+      google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 344 });
+      show($('google-btn'), false);
+    };
+    document.head.append(sc);
+  } catch (_) {}
+})();
 const showCredits = left => {
   const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out');
   c.textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다.';

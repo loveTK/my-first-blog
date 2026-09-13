@@ -5,3 +5,4 @@ train/runs/
 !weights/notes.onnx
 tests/fixtures/*
 !tests/fixtures/.gitkeep
+notalo.db
