@@ -300,7 +300,7 @@ const setMode = m => { mode = m; const c = MODES[m];
   show($('email-field'), c.email); show($('pw-field'), c.pw); $('email').required = c.email; $('pw').required = c.pw;
   if (c.pw) { $('pw-label').textContent = c.pwLabel; $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
   show($('signup-tip'), m === 'signup'); show($('google-btn'), m !== 'reset' && !$('google-btn').dataset.gsi); show($('gsi'), m !== 'reset'); show(login.querySelector('.or'), m !== 'reset');
-  $('swap').innerHTML = c.swap; $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
+  $('swap').innerHTML = c.swap; show($('swap'), !!c.swap); $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
 $('login-btn').onclick = () => openLogin(false);
 $('login-x').onclick = () => login.close();
 login.onclick = e => { if (e.target === login) login.close(); };
@@ -322,7 +322,7 @@ setMode('login');
   try {
     const q = new URLSearchParams(location.search);
     if (q.get('verified')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 무료 2회가 지급됐습니다.'; }
-    if (q.get('reset')) { resetToken = q.get('reset'); history.replaceState(null, '', '/'); setMode('reset'); login.showModal(); }
+    if (q.get('reset')) { resetToken = q.get('reset'); history.replaceState(null, '', '/'); setMode('reset'); login.showModal(); $('pw').focus(); }
     const { google_client_id } = await (await fetch('/auth/config')).json();
     if (!google_client_id) return;
     const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
