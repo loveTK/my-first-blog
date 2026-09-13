@@ -385,6 +385,7 @@ pay.onclick = e => { if (e.target === pay) pay.close(); };
         }).render('#pp');
       };
     });
+    sc.onerror = () => document.querySelectorAll('.buy').forEach(b => { b.textContent = '결제 모듈 로드 실패'; });  // 보통 Client ID 오타·Live/Sandbox 불일치
     document.head.append(sc);
   } catch (_) {}
 })();
