@@ -126,9 +126,11 @@ dialog .btn-p{width:100%;margin-top:4px}
 .tip{font-size:13px;color:var(--muted);margin:10px 0 0}
 .msg{font-size:14px;margin:12px 0 0;min-height:22px;color:var(--accent-ink)}
 
-/* 푸터 (5단계) */
-footer{margin-top:72px;padding:20px 0 32px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
-footer p{margin:4px 0}
+/* 푸터 */
+footer{margin-top:80px;padding:28px 0 40px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);display:flex;justify-content:space-between;gap:32px;flex-wrap:wrap}
+footer .brand{font-size:18px;color:var(--muted)}
+footer p{margin:0 0 4px;max-width:60ch}
+footer a{color:inherit}
 </style>
 <div class="wrap">
 <header>
@@ -254,8 +256,11 @@ footer p{margin:4px 0}
 </dialog>
 
 <footer>
-  <p>음표 인식 모델은 DeepScoresV2 데이터셋(Tuggener et al., CC BY 4.0)으로 학습했습니다.</p>
-  <p>업로드한 파일과 결과는 처리 직후 삭제됩니다.</p>
+  <span class="brand">Notalo</span>
+  <div>
+    <p>음표 인식 모델은 <a href="https://zenodo.org/records/4012193" rel="noopener">DeepScoresV2</a> 데이터셋(Tuggener et al., CC BY 4.0)으로 학습했습니다.</p>
+    <p>업로드한 파일과 결과는 처리 직후 삭제됩니다. 문의: <a href="mailto:xorud386@gmail.com">xorud386@gmail.com</a></p>
+  </div>
 </footer>
 </div>
 <script>
