@@ -39,11 +39,17 @@ if BUCKET:
     _s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"),
                        aws_access_key_id=os.environ.get("NOTALO_BUCKET_KEY_ID") or None,
                        aws_secret_access_key=os.environ.get("NOTALO_BUCKET_KEY_SECRET") or None)
+    _err = lambda e: getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
     try:
         _s3.download_file(BUCKET, "notalo.db", DB)
         print("[db] 버킷에서 내려받음", flush=True)
-    except Exception as e:  # 처음이라 없거나 권한 문제. 없으면 새로 만들고 첫 쓰기 때 올라감
-        print(f"[db] 버킷에서 못 내려받음({type(e).__name__}): 새 DB로 시작", flush=True)
+    except Exception as e:  # 404 = 아직 파일 없음(처음이면 정상). 403/AccessDenied = 키·권한 문제
+        print(f"[db] 버킷에 파일 없음 또는 못 읽음 ({_err(e)}): 새 DB로 시작", flush=True)
+    try:  # 쓰기 권한 확인
+        _s3.put_object(Bucket=BUCKET, Key=".ping", Body=b"")
+        print("[db] 버킷 쓰기 OK", flush=True)
+    except Exception as e:
+        print(f"[db] 버킷 쓰기 실패 ({_err(e)}): 회원 데이터가 재배포 때 사라짐. 키/버킷 이름 확인 필요", flush=True)
 
 
 class _Conn:
@@ -63,7 +69,10 @@ class _Conn:
         self.con.commit() if not exc[0] else self.con.rollback()
         self.con.close()
         if changed and _s3 and not exc[0]:
-            _s3.upload_file(DB, BUCKET, "notalo.db")
+            try:
+                _s3.upload_file(DB, BUCKET, "notalo.db")
+            except Exception as e:  # 버킷이 잠깐 안 되더라도 서비스는 계속
+                print(f"[db] 버킷 업로드 실패 ({_err(e)})", flush=True)
 SMTP_USER, SMTP_PASS = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GUEST_FREE, SIGNUP_BONUS = 1, 2
