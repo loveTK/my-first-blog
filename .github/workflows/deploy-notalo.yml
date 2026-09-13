@@ -35,11 +35,16 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          NOTALO_BUCKET: ${{ secrets.NOTALO_BUCKET }}
+          NOTALO_BUCKET_KEY_ID: ${{ secrets.NOTALO_BUCKET_KEY_ID }}
+          NOTALO_BUCKET_KEY_SECRET: ${{ secrets.NOTALO_BUCKET_KEY_SECRET }}
+          AWS_REGION_VALUE: ${{ secrets.AWS_REGION }}
         run: |
           python3 - <<'PY'
           import json, os
-          keys = ["NOTALO_SECRET", "SMTP_USER", "SMTP_PASS", "GOOGLE_CLIENT_ID"]
+          keys = ["NOTALO_SECRET", "SMTP_USER", "SMTP_PASS", "GOOGLE_CLIENT_ID", "NOTALO_BUCKET", "NOTALO_BUCKET_KEY_ID", "NOTALO_BUCKET_KEY_SECRET"]
           env = {k: os.environ.get(k, "").strip() for k in keys}
+          env["AWS_REGION"] = os.environ["AWS_REGION_VALUE"].strip()  # boto3가 버킷 리전 알아야 함
           print("secrets set:", {k: bool(v) for k, v in env.items()})
           json.dump({"notune": {"image": os.environ["IMAGE"], "ports": {"8000": "HTTP"}, "environment": env}}, open("deploy.json", "w"))
           PY

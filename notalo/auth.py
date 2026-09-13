@@ -29,6 +29,41 @@ if os.path.exists(_env):
 
 SECRET = (os.environ.get("NOTALO_SECRET") or "dev-secret").encode()
 DB = os.environ.get("NOTALO_DB", os.path.join(HERE, "notalo.db"))
+
+# ---- SQLite 파일을 Lightsail 버킷(S3 호환)에 동기화. 컨테이너 디스크는 재배포 때 사라지므로 ----
+# 시작: 버킷에 있으면 내려받음 / 쓰기(INSERT·UPDATE)가 있었던 연결이 닫힐 때마다 올림. 컨테이너 1대 전제.
+BUCKET = os.environ.get("NOTALO_BUCKET")
+_s3 = None
+if BUCKET:
+    import boto3
+    _s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"),
+                       aws_access_key_id=os.environ.get("NOTALO_BUCKET_KEY_ID") or None,
+                       aws_secret_access_key=os.environ.get("NOTALO_BUCKET_KEY_SECRET") or None)
+    try:
+        _s3.download_file(BUCKET, "notalo.db", DB)
+        print("[db] 버킷에서 내려받음", flush=True)
+    except Exception as e:  # 처음이라 없거나 권한 문제. 없으면 새로 만들고 첫 쓰기 때 올라감
+        print(f"[db] 버킷에서 못 내려받음({type(e).__name__}): 새 DB로 시작", flush=True)
+
+
+class _Conn:
+    """with db() as con: ... → 나갈 때 커밋, 변경 있었으면 버킷에 업로드."""
+
+    def __enter__(self):
+        self.con = sqlite3.connect(DB)
+        self.con.execute("CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, salt BLOB, pw BLOB, verified INT DEFAULT 0, "
+                         "google INT DEFAULT 0, credits INT DEFAULT 0, created REAL)")
+        self.con.execute("CREATE TABLE IF NOT EXISTS guests(fp TEXT PRIMARY KEY, used INT DEFAULT 0, first REAL)")
+        self.con.commit()
+        self.n0 = self.con.total_changes
+        return self.con
+
+    def __exit__(self, *exc):
+        changed = self.con.total_changes != self.n0
+        self.con.commit() if not exc[0] else self.con.rollback()
+        self.con.close()
+        if changed and _s3 and not exc[0]:
+            _s3.upload_file(DB, BUCKET, "notalo.db")
 SMTP_USER, SMTP_PASS = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GUEST_FREE, SIGNUP_BONUS = 1, 2
@@ -38,11 +73,7 @@ rate_limit = lambda request: None  # app.py가 IP 레이트리밋 함수 주입
 
 
 def db():
-    c = sqlite3.connect(DB)
-    c.execute("CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, salt BLOB, pw BLOB, verified INT DEFAULT 0, "
-              "google INT DEFAULT 0, credits INT DEFAULT 0, created REAL)")
-    c.execute("CREATE TABLE IF NOT EXISTS guests(fp TEXT PRIMARY KEY, used INT DEFAULT 0, first REAL)")
-    return c
+    return _Conn()
 
 
 def _hash(pw, salt):
