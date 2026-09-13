@@ -246,13 +246,13 @@ footer a{color:inherit}
   </button>
   <p class="or">또는 이메일로</p>
   <form id="login-form">
-    <div class="field"><label for="email">이메일</label><input type="email" id="email" name="email" autocomplete="email" required></div>
-    <div class="field"><label for="pw">비밀번호</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
+    <div class="field" id="email-field"><label for="email">이메일</label><input type="email" id="email" name="email" autocomplete="email" required></div>
+    <div class="field" id="pw-field"><label for="pw" id="pw-label">비밀번호</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
     <button class="btn-p" type="submit" id="login-submit">로그인</button>
     <p class="tip" id="signup-tip" hidden>가입하면 인증 메일을 보내드려요. 메일의 링크를 누르면 가입이 끝납니다.</p>
     <p class="msg" id="login-msg" aria-live="polite"></p>
   </form>
-  <p class="swap" id="swap">계정이 없나요? <a id="to-signup">회원가입</a></p>
+  <p class="swap" id="swap"></p>
 </dialog>
 
 <footer>
@@ -287,12 +287,20 @@ $('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
 
 // 로그인
 const login = $('login'), msg = $('login-msg');
-const openLogin = asSignup => { setMode(!!asSignup); login.showModal(); };
-let signup = false;
-const setMode = on => { signup = on; $('login-title').textContent = on ? '회원가입' : '로그인'; $('login-submit').textContent = on ? '인증 메일 받고 가입하기' : '로그인';
-  show($('signup-tip'), on); $('pw').autocomplete = on ? 'new-password' : 'current-password'; msg.textContent = '';
-  $('swap').innerHTML = on ? '이미 계정이 있나요? <a id="to-login">로그인</a>' : '계정이 없나요? <a id="to-signup">회원가입</a>';
-  ($('to-login') || $('to-signup')).onclick = () => setMode(!on); };
+const openLogin = asSignup => { setMode(asSignup ? 'signup' : 'login'); login.showModal(); };
+let mode = 'login', resetToken = '';
+const MODES = {
+  login:  { title: '로그인', btn: '로그인', email: true, pw: true, pwLabel: '비밀번호', swap: '계정이 없나요? <a data-m="signup">회원가입</a> · <a data-m="forgot">비밀번호를 잊으셨나요?</a>' },
+  signup: { title: '회원가입', btn: '인증 메일 받고 가입하기', email: true, pw: true, pwLabel: '비밀번호', swap: '이미 계정이 있나요? <a data-m="login">로그인</a>' },
+  forgot: { title: '비밀번호 재설정', btn: '재설정 메일 보내기', email: true, pw: false, swap: '<a data-m="login">로그인으로 돌아가기</a>' },
+  reset:  { title: '새 비밀번호', btn: '비밀번호 바꾸기', email: false, pw: true, pwLabel: '새 비밀번호 (8자 이상)', swap: '' },
+};
+const setMode = m => { mode = m; const c = MODES[m];
+  $('login-title').textContent = c.title; $('login-submit').textContent = c.btn; msg.textContent = '';
+  show($('email-field'), c.email); show($('pw-field'), c.pw); $('email').required = c.email; $('pw').required = c.pw;
+  if (c.pw) { $('pw-label').textContent = c.pwLabel; $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
+  show($('signup-tip'), m === 'signup'); show($('google-btn'), m !== 'reset' && !$('google-btn').dataset.gsi); show($('gsi'), m !== 'reset'); show(login.querySelector('.or'), m !== 'reset');
+  $('swap').innerHTML = c.swap; $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
 $('login-btn').onclick = () => openLogin(false);
 $('login-x').onclick = () => login.close();
 login.onclick = e => { if (e.target === login) login.close(); };
@@ -303,14 +311,18 @@ $('login-form').onsubmit = async e => {
   const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
   btn.disabled = true;
   try {
-    if (signup) { await api('/signup', body); msg.textContent = `인증 메일을 보냈어요. ${body.email} 메일함을 확인해 주세요.`; credits(); }
+    if (mode === 'signup') { await api('/signup', body); msg.textContent = `인증 메일을 보냈어요. ${body.email} 메일함을 확인해 주세요.`; credits(); }
+    else if (mode === 'forgot') { await api('/forgot', body); msg.textContent = `가입된 이메일이면 재설정 링크를 보냈어요. ${body.email} 메일함을 확인해 주세요.`; }
+    else if (mode === 'reset') { await api('/reset', { token: resetToken, password: body.password }); login.close(); s.textContent = '비밀번호를 바꿨어요. 로그인되었습니다.'; credits(); }
     else { await api('/login', body); login.close(); credits(); }
   } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
 };
-setMode(false);
+setMode('login');
 (async () => {
   try {
-    if (location.search.includes('verified=1')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 무료 2회가 지급됐습니다.'; }
+    const q = new URLSearchParams(location.search);
+    if (q.get('verified')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 무료 2회가 지급됐습니다.'; }
+    if (q.get('reset')) { resetToken = q.get('reset'); history.replaceState(null, '', '/'); setMode('reset'); login.showModal(); }
     const { google_client_id } = await (await fetch('/auth/config')).json();
     if (!google_client_id) return;
     const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
@@ -318,7 +330,7 @@ setMode(false);
       google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
         try { await api('/login/google', { credential }); login.close(); credits(); } catch (err) { msg.textContent = err.message; } } });
       google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 344 });
-      show($('google-btn'), false);
+      show($('google-btn'), false); $('google-btn').dataset.gsi = '1';
     };
     document.head.append(sc);
   } catch (_) {}

@@ -248,6 +248,60 @@ def login(c: Cred, request: Request):
     return resp
 
 
+# ---- 비밀번호 재설정: 토큰에 현재 비번 해시 앞부분을 섞어서 한 번 쓰면(비번 바뀌면) 무효 ----
+def _reset_token(email, pw, exp):
+    body = f"{email}|{exp}|{pw[:6].hex()}"
+    return f"{body}|{_sig(body)}"
+
+
+@router.post("/forgot")
+def forgot(c: Cred, request: Request):
+    rate_limit(request)
+    email = c.email.strip().lower()
+    with db() as con:
+        row = con.execute("SELECT pw, google FROM users WHERE email=?", (email,)).fetchone()
+    if row and row[0]:  # 없는 계정/Google 계정이어도 같은 응답 (계정 존재 여부 노출 안 함)
+        exp = int(time.time() + 3600)
+        link = f"{str(request.base_url).rstrip('/')}/reset?token={urllib.parse.quote(_reset_token(email, row[0], exp), safe='')}"
+        _send(email, "Notalo 비밀번호 재설정", f"아래 링크에서 새 비밀번호를 정하세요. (1시간 안에)\n\n{link}\n\n본인이 요청한 게 아니면 이 메일은 무시하세요.")
+    return {"ok": True}
+
+
+def _check_reset(token):
+    try:
+        email, exp, pwhex, sig = token.split("|")
+    except ValueError:
+        raise HTTPException(400, "링크가 잘못됐습니다.")
+    with db() as con:
+        row = con.execute("SELECT pw FROM users WHERE email=?", (email,)).fetchone()
+    if not row or not hmac.compare_digest(sig, _sig(f"{email}|{exp}|{pwhex}")) or row[0][:6].hex() != pwhex or int(exp) < time.time():
+        raise HTTPException(400, "링크가 만료됐거나 이미 사용됐습니다. 재설정 메일을 다시 요청해 주세요.")
+    return email
+
+
+@router.get("/reset")
+def reset_page(token: str):
+    _check_reset(token)  # 잘못된 링크는 여기서 400
+    return RedirectResponse("/?reset=" + urllib.parse.quote(token, safe=""), status_code=303)
+
+
+class Reset(BaseModel):
+    token: str
+    password: str
+
+
+@router.post("/reset")
+def reset(r: Reset, request: Request):
+    rate_limit(request)
+    if len(r.password) < 8:
+        raise HTTPException(400, "비밀번호는 8자 이상이어야 합니다.")
+    email = _check_reset(r.token)
+    salt = secrets.token_bytes(16)
+    with db() as con:
+        con.execute("UPDATE users SET salt=?, pw=?, verified=1 WHERE email=?", (salt, _hash(r.password, salt), email))
+    return _set_user(Response(json.dumps({"email": email}), media_type="application/json"), email)
+
+
 @router.post("/logout")
 def logout():
     r = Response(status_code=204)
