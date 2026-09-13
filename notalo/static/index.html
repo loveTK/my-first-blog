@@ -90,6 +90,42 @@ select:hover{border-color:var(--fg)}
 @keyframes sh{to{background-position:-200% 0}}
 .dl{display:inline-block;margin-top:20px;text-decoration:none}
 
+/* 요금제 */
+.pricing{margin-top:80px;border-top:1px solid var(--line);padding-top:48px}
+.pricing h2{font-family:"Gowun Batang","Nanum Myeongjo",serif;font-weight:700;font-size:28px;margin:0 0 8px}
+.pricing .sub{margin:0 0 32px;color:var(--muted);max-width:44ch}
+.plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:900px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.plans{grid-template-columns:1fr}}
+.plan{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px 22px 22px;display:flex;flex-direction:column;gap:6px}
+.plan.rec{border-color:var(--accent);border-width:1.5px}
+.plan .badge{position:absolute;top:-11px;left:20px;background:var(--accent);color:#fff;font-size:12px;font-weight:500;padding:2px 10px;border-radius:999px}
+.plan .name{font-weight:500}
+.plan .count{font-family:"Gowun Batang",serif;font-weight:700;font-size:30px;line-height:1.2;margin-top:4px}
+.plan .count small{font-family:"IBM Plex Sans KR",sans-serif;font-weight:400;font-size:15px;color:var(--muted);margin-left:2px}
+.plan .price{font-size:17px}
+.plan .unit{font-size:13px;color:var(--muted)}
+.plan .who{font-size:14px;color:var(--muted);margin-top:4px;flex:1}
+.plan button{margin-top:14px;width:100%}
+
+/* 로그인 모달 */
+dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);color:var(--fg);padding:32px 28px 28px;width:min(400px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(27,27,24,.18)}
+dialog::backdrop{background:rgba(27,27,24,.45)}
+dialog h2{font-family:"Gowun Batang","Nanum Myeongjo",serif;font-weight:700;font-size:24px;margin:0 0 20px}
+.x{position:absolute;top:10px;right:10px;padding:6px 10px;color:var(--muted);font-size:20px;line-height:1}
+.google{width:100%;border-color:var(--line);display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:500}
+.google:hover{border-color:var(--fg)}
+.or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:18px 0}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.field{margin-bottom:12px}
+.field input{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:11px 12px}
+.field input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+dialog .btn-p{width:100%;margin-top:4px}
+.swap{font-size:14px;color:var(--muted);text-align:center;margin:16px 0 0}
+.swap a{cursor:pointer}
+.tip{font-size:13px;color:var(--muted);margin:10px 0 0}
+.msg{font-size:14px;margin:12px 0 0;min-height:22px;color:var(--accent-ink)}
+
 /* 푸터 (5단계) */
 footer{margin-top:72px;padding:20px 0 32px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
 footer p{margin:4px 0}
@@ -158,6 +194,64 @@ footer p{margin:4px 0}
   </section>
 </main>
 
+<section class="pricing" id="pricing">
+  <h2>요금제</h2>
+  <p class="sub">무료 2회는 가입 없이 바로. 더 필요하면 횟수만큼만 사세요. 구독이 아니라 사용한 만큼만 냅니다.</p>
+  <div class="plans">
+    <div class="plan">
+      <div class="name">무료</div>
+      <div class="count">2<small>회</small></div>
+      <div class="price">0원</div>
+      <div class="unit">체험용</div>
+      <div class="who">한 곡 정도 먼저 해보고 싶을 때</div>
+      <button class="btn-o" type="button" id="plan-free">무료로 시작하기</button>
+    </div>
+    <div class="plan">
+      <div class="name">스타터</div>
+      <div class="count">5<small>회</small></div>
+      <div class="price">9,900원</div>
+      <div class="unit">1회당 1,980원</div>
+      <div class="who">이번 달 연습곡 몇 곡</div>
+      <button class="btn-p" type="button" disabled>준비 중</button>
+    </div>
+    <div class="plan rec">
+      <span class="badge">추천</span>
+      <div class="name">스탠다드</div>
+      <div class="count">30<small>회</small></div>
+      <div class="price">39,000원</div>
+      <div class="unit">1회당 1,300원</div>
+      <div class="who">꾸준히 배우는 분께 가장 알맞아요</div>
+      <button class="btn-p" type="button" disabled>준비 중</button>
+    </div>
+    <div class="plan">
+      <div class="name">프로</div>
+      <div class="count">100<small>회</small></div>
+      <div class="price">99,000원</div>
+      <div class="unit">1회당 990원</div>
+      <div class="who">강사용. 학생 악보를 한꺼번에</div>
+      <button class="btn-p" type="button" disabled>준비 중</button>
+    </div>
+  </div>
+</section>
+
+<dialog id="login" aria-labelledby="login-title">
+  <button class="x" type="button" id="login-x" aria-label="닫기">&times;</button>
+  <h2 id="login-title">로그인</h2>
+  <button class="google" type="button" id="google-btn">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+    Google로 계속하기
+  </button>
+  <p class="or">또는 이메일로</p>
+  <form id="login-form">
+    <div class="field"><label for="email">이메일</label><input type="email" id="email" name="email" autocomplete="email" required></div>
+    <div class="field"><label for="pw">비밀번호</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
+    <button class="btn-p" type="submit" id="login-submit">로그인</button>
+    <p class="tip" id="signup-tip" hidden>가입하면 인증 메일을 보내드려요. 메일의 링크를 누르면 가입이 끝납니다.</p>
+    <p class="msg" id="login-msg" aria-live="polite"></p>
+  </form>
+  <p class="swap" id="swap">계정이 없나요? <a id="to-signup">회원가입</a></p>
+</dialog>
+
 <footer>
   <p>음표 인식 모델은 DeepScoresV2 데이터셋(Tuggener et al., CC BY 4.0)으로 학습했습니다.</p>
   <p>업로드한 파일과 결과는 처리 직후 삭제됩니다.</p>
@@ -175,8 +269,25 @@ file.onchange = () => pick();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files); };
-const openPricing = () => { const el = $('pricing'); if (el) el.scrollIntoView({ block: 'start' }); };
+const openPricing = () => $('pricing').scrollIntoView({ block: 'start' });
 $('pricing-btn').onclick = openPricing;
+$('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
+
+// 로그인 (UI만. 인증 백엔드는 다음 단계)
+const login = $('login'), msg = $('login-msg');
+let signup = false;
+const setMode = on => { signup = on; $('login-title').textContent = on ? '회원가입' : '로그인'; $('login-submit').textContent = on ? '인증 메일 받고 가입하기' : '로그인';
+  show($('signup-tip'), on); $('pw').autocomplete = on ? 'new-password' : 'current-password'; msg.textContent = '';
+  $('swap').innerHTML = on ? '이미 계정이 있나요? <a id="to-login">로그인</a>' : '계정이 없나요? <a id="to-signup">회원가입</a>';
+  ($('to-login') || $('to-signup')).onclick = () => setMode(!on); };
+$('login-btn').onclick = () => { setMode(false); login.showModal(); };
+$('login-x').onclick = () => login.close();
+login.onclick = e => { if (e.target === login) login.close(); };
+$('google-btn').onclick = () => { msg.textContent = 'Google 로그인은 준비 중입니다.'; };
+$('login-form').onsubmit = e => { e.preventDefault(); msg.textContent = signup ? '이메일 인증 가입은 준비 중입니다.' : '이메일 로그인은 준비 중입니다.'; };
+const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
+$('logout-btn').onclick = () => setUser(null);
+setMode(false);
 const showCredits = left => {
   const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out');
   c.textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다.';
