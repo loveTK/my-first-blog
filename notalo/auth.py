@@ -1,5 +1,8 @@
-"""이메일+비밀번호(인증 메일) / Google 로그인. 표준 라이브러리만 (sqlite3, hashlib, smtplib, urllib).
-세션 = HMAC 서명 쿠키 nt_user (서버 상태 없음). ponytail: SQLite 파일. 컨테이너 재배포 시 날아감 → 결제 붙일 때 외부 DB로."""
+"""회원·크레딧. 표준 라이브러리만 (sqlite3, hashlib, smtplib, urllib).
+- 비가입 1회: 쿠키 nt_used + 지문(IP+UA+언어 해시) 둘 다 기록, 하나라도 있으면 0회
+- 가입: 이메일+비번(scrypt). 인증 링크 클릭 시에만 credits=2 (한 번만). Google 로그인은 인증 완료로 간주
+- 세션: 서명 쿠키 nt_user=<email>.<hmac> (서버 세션 테이블 없음)
+ponytail: SQLite 파일. 컨테이너 재배포 시 날아감 → 결제 붙일 때 외부 DB로."""
 import hashlib
 import hmac
 import json
@@ -16,17 +19,29 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/auth")
+HERE = os.path.dirname(os.path.abspath(__file__))
+_env = os.path.join(HERE, ".env")  # 로컬용. 배포는 컨테이너 환경변수(GitHub 시크릿)
+if os.path.exists(_env):
+    for line in open(_env):
+        k, _, v = line.strip().partition("=")
+        if k and not k.startswith("#"):
+            os.environ.setdefault(k, v.strip().strip('"'))
+
 SECRET = (os.environ.get("NOTALO_SECRET") or "dev-secret").encode()
-DB = os.environ.get("NOTALO_DB", os.path.join(os.path.dirname(os.path.abspath(__file__)), "notalo.db"))
+DB = os.environ.get("NOTALO_DB", os.path.join(HERE, "notalo.db"))
 SMTP_USER, SMTP_PASS = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GUEST_FREE, SIGNUP_BONUS = 1, 2
 COOKIE_AGE = 30 * 24 * 3600
+router = APIRouter()
+rate_limit = lambda request: None  # app.py가 IP 레이트리밋 함수 주입
 
 
 def db():
     c = sqlite3.connect(DB)
-    c.execute("CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, salt BLOB, pw BLOB, verified INT DEFAULT 0, google INT DEFAULT 0, created REAL)")
+    c.execute("CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, salt BLOB, pw BLOB, verified INT DEFAULT 0, "
+              "google INT DEFAULT 0, credits INT DEFAULT 0, created REAL)")
+    c.execute("CREATE TABLE IF NOT EXISTS guests(fp TEXT PRIMARY KEY, used INT DEFAULT 0, first REAL)")
     return c
 
 
@@ -38,22 +53,8 @@ def _sig(s):
     return hmac.new(SECRET, s.encode(), hashlib.sha256).hexdigest()[:24]
 
 
-def _token(email, exp):  # 인증 링크용. 서버에 저장 안 함
-    body = f"{email}|{exp}"
-    return urllib.parse.quote(f"{body}|{_sig(body)}", safe="")
-
-
-def _parse_token(t):
-    try:
-        email, exp, sig = t.split("|")
-    except ValueError:
-        return None
-    if not hmac.compare_digest(sig, _sig(f"{email}|{exp}")) or float(exp) < time.time():
-        return None
-    return email
-
-
-def current_user(request: Request):
+# ---- 세션 ----
+def current_user(request):
     email, _, sig = request.cookies.get("nt_user", "").rpartition(".")
     return email if email and hmac.compare_digest(sig, _sig(email)) else None
 
@@ -63,6 +64,62 @@ def _set_user(resp, email):
     return resp
 
 
+def _user_row(email):
+    with db() as con:
+        return con.execute("SELECT verified, credits, google FROM users WHERE email=?", (email,)).fetchone()
+
+
+# ---- 비가입 1회 ----
+def fingerprint(request):
+    ip = request.headers.get("x-forwarded-for", request.client.host).split(",")[0].strip()
+    raw = "|".join([ip, request.headers.get("user-agent", ""), request.headers.get("accept-language", "")])
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def guest_used(request):
+    n, _, sig = request.cookies.get("nt_used", "").partition(".")
+    by_cookie = int(n) if n.isdigit() and hmac.compare_digest(sig, _sig(n)) else 0
+    with db() as con:
+        row = con.execute("SELECT used FROM guests WHERE fp=?", (fingerprint(request),)).fetchone()
+    return max(by_cookie, row[0] if row else 0)
+
+
+def guest_mark(request, resp):
+    used = guest_used(request) + 1
+    with db() as con:
+        con.execute("INSERT INTO guests(fp,used,first) VALUES(?,?,?) ON CONFLICT(fp) DO UPDATE SET used=?",
+                    (fingerprint(request), used, time.time(), used))
+    resp.set_cookie("nt_used", f"{used}.{_sig(str(used))}", max_age=365 * 24 * 3600, httponly=True, samesite="lax")
+
+
+# ---- 크레딧 (app.py가 씀) ----
+def credits(request):
+    """{'left', 'user', 'verified'}"""
+    email = current_user(request)
+    if email:
+        row = _user_row(email)
+        if row:
+            return {"left": row[1], "user": email, "verified": bool(row[0])}
+    return {"left": max(GUEST_FREE - guest_used(request), 0), "user": None, "verified": False}
+
+
+def spend(request, resp):
+    """변환 성공 후 1회 차감. 잔여 없으면 False."""
+    email = current_user(request)
+    row = _user_row(email) if email else None
+    if row:
+        if not row[0] or row[1] <= 0:
+            return False
+        with db() as con:
+            con.execute("UPDATE users SET credits=credits-1 WHERE email=? AND credits>0", (email,))
+        return True
+    if guest_used(request) >= GUEST_FREE:
+        return False
+    guest_mark(request, resp)
+    return True
+
+
+# ---- 메일 ----
 def _send(to, subject, body):
     if not SMTP_USER:  # 로컬 개발: 메일 대신 로그
         print(f"[mail] to={to} subject={subject}\n{body}", flush=True)
@@ -75,19 +132,80 @@ def _send(to, subject, body):
         s.send_message(m)
 
 
+def _send_verify(request, email):
+    exp = int(time.time() + 24 * 3600)
+    body = f"{email}|{exp}"
+    token = urllib.parse.quote(f"{body}|{_sig(body)}", safe="")
+    link = f"{str(request.base_url).rstrip('/')}/verify?token={token}"
+    _send(email, "Notalo 가입 인증", f"아래 링크를 누르면 가입이 끝나고 무료 {SIGNUP_BONUS}회가 지급됩니다. (24시간 안에)\n\n{link}\n\n"
+                                  "본인이 요청한 게 아니면 이 메일은 무시하세요.")
+
+
+# ---- 엔드포인트 ----
 class Cred(BaseModel):
     email: str
-    password: str
+    password: str = ""
 
 
-@router.get("/config")
+@router.get("/auth/config")
 def config():
-    return {"google_client_id": GOOGLE_CLIENT_ID, "email": bool(SMTP_USER) or os.environ.get("NOTALO_DEV") == "1"}
+    return {"google_client_id": GOOGLE_CLIENT_ID}
 
 
-@router.get("/me")
-def me(request: Request):
-    return {"email": current_user(request)}
+@router.post("/signup")
+def signup(c: Cred, request: Request):
+    rate_limit(request)
+    email = c.email.strip().lower()
+    if "@" not in email or "." not in email.rpartition("@")[2] or len(c.password) < 8:
+        raise HTTPException(400, "이메일 형식과 8자 이상 비밀번호를 확인해 주세요.")
+    with db() as con:
+        row = con.execute("SELECT verified FROM users WHERE email=?", (email,)).fetchone()
+        if row and row[0]:
+            raise HTTPException(409, "이미 가입된 이메일입니다. 로그인해 주세요.")
+        salt = secrets.token_bytes(16)
+        con.execute("INSERT OR REPLACE INTO users(email,salt,pw,verified,google,credits,created) VALUES(?,?,?,0,0,0,?)",
+                    (email, salt, _hash(c.password, salt), time.time()))
+    _send_verify(request, email)
+    return _set_user(Response(json.dumps({"ok": True}), media_type="application/json"), email)
+
+
+@router.post("/resend")
+def resend(c: Cred, request: Request):
+    rate_limit(request)
+    email = c.email.strip().lower()
+    row = _user_row(email)
+    if not row or row[0]:
+        raise HTTPException(400, "인증 대기 중인 계정이 아닙니다.")
+    _send_verify(request, email)
+    return {"ok": True}
+
+
+@router.get("/verify")
+def verify(token: str):
+    try:
+        email, exp, sig = token.split("|")
+    except ValueError:
+        raise HTTPException(400, "링크가 잘못됐습니다.")
+    if not hmac.compare_digest(sig, _sig(f"{email}|{exp}")) or int(exp) < time.time():
+        raise HTTPException(400, "링크가 만료됐거나 잘못됐습니다. 인증 메일을 다시 보내 주세요.")
+    with db() as con:
+        # 인증 완료 순간에만, 한 번만 지급
+        con.execute("UPDATE users SET verified=1, credits=credits+? WHERE email=? AND verified=0", (SIGNUP_BONUS, email))
+    return _set_user(RedirectResponse("/?verified=1", status_code=303), email)
+
+
+@router.post("/login")
+def login(c: Cred, request: Request):
+    rate_limit(request)
+    email = c.email.strip().lower()
+    with db() as con:
+        row = con.execute("SELECT salt,pw,verified,google FROM users WHERE email=?", (email,)).fetchone()
+    if row and row[3] and not row[1]:
+        raise HTTPException(401, "Google로 가입한 계정이에요. Google로 계속하기를 눌러 주세요.")
+    if not row or not hmac.compare_digest(_hash(c.password, row[0]), row[1]):
+        raise HTTPException(401, "이메일 또는 비밀번호가 맞지 않습니다.")
+    resp = _set_user(Response(json.dumps({"email": email, "verified": bool(row[2])}), media_type="application/json"), email)
+    return resp
 
 
 @router.post("/logout")
@@ -97,51 +215,12 @@ def logout():
     return r
 
 
-@router.post("/signup")
-def signup(c: Cred, request: Request):
-    email = c.email.strip().lower()
-    if "@" not in email or len(c.password) < 8:
-        raise HTTPException(400, "이메일 형식과 8자 이상 비밀번호를 확인해 주세요.")
-    with db() as con:
-        row = con.execute("SELECT verified FROM users WHERE email=?", (email,)).fetchone()
-        if row and row[0]:
-            raise HTTPException(409, "이미 가입된 이메일입니다. 로그인해 주세요.")
-        salt = secrets.token_bytes(16)
-        con.execute("INSERT OR REPLACE INTO users(email,salt,pw,verified,google,created) VALUES(?,?,?,0,0,?)",
-                    (email, salt, _hash(c.password, salt), time.time()))
-    link = f"{str(request.base_url).rstrip('/')}/auth/verify?t={_token(email, time.time() + 24 * 3600)}"
-    _send(email, "Notalo 가입 인증", f"아래 링크를 누르면 가입이 끝납니다. (24시간 안에)\n\n{link}\n\n본인이 요청한 게 아니면 이 메일은 무시하세요.")
-    return {"ok": True}
-
-
-@router.get("/verify")
-def verify(t: str):
-    email = _parse_token(t)
-    if not email:
-        raise HTTPException(400, "링크가 만료됐거나 잘못됐습니다. 다시 가입해 주세요.")
-    with db() as con:
-        con.execute("UPDATE users SET verified=1 WHERE email=?", (email,))
-    return _set_user(RedirectResponse("/?verified=1", status_code=303), email)
-
-
-@router.post("/login")
-def login(c: Cred):
-    email = c.email.strip().lower()
-    with db() as con:
-        row = con.execute("SELECT salt,pw,verified,google FROM users WHERE email=?", (email,)).fetchone()
-    if not row or row[3] or not hmac.compare_digest(_hash(c.password, row[0]), row[1]):
-        raise HTTPException(401, "이메일 또는 비밀번호가 맞지 않습니다." + (" Google로 가입한 계정이에요." if row and row[3] else ""))
-    if not row[2]:
-        raise HTTPException(403, "아직 이메일 인증이 안 됐어요. 메일함의 인증 링크를 눌러 주세요.")
-    return _set_user(Response(json.dumps({"email": email}), media_type="application/json"), email)
-
-
 class GoogleCred(BaseModel):
     credential: str
 
 
-@router.post("/google")
-def google(g: GoogleCred):
+@router.post("/login/google")
+def login_google(g: GoogleCred):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(503, "Google 로그인은 준비 중입니다.")
     try:
@@ -153,6 +232,6 @@ def google(g: GoogleCred):
         raise HTTPException(401, "Google 인증에 실패했습니다.")
     email = info["email"].lower()
     with db() as con:
-        con.execute("INSERT OR IGNORE INTO users(email,salt,pw,verified,google,created) VALUES(?,?,?,1,1,?)", (email, b"", b"", time.time()))
-        con.execute("UPDATE users SET verified=1, google=1 WHERE email=?", (email,))
-    return _set_user(Response(json.dumps({"email": email}), media_type="application/json"), email)
+        con.execute("INSERT OR IGNORE INTO users(email,salt,pw,verified,google,credits,created) VALUES(?,?,?,0,1,0,?)", (email, b"", b"", time.time()))
+        con.execute("UPDATE users SET google=1, verified=1, credits=credits+? WHERE email=? AND verified=0", (SIGNUP_BONUS, email))
+    return _set_user(Response(json.dumps({"email": email, "verified": True}), media_type="application/json"), email)

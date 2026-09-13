@@ -1,8 +1,9 @@
-runs/
-train/runs/
-*.pt
-*.onnx
-!weights/notes.onnx
-tests/fixtures/*
 !tests/fixtures/.gitkeep
+!weights/notes.onnx
+*.onnx
+*.pt
+.env
 notalo.db
+runs/
+tests/fixtures/*
+train/runs/
