@@ -2,7 +2,7 @@
 - 비가입 1회: 쿠키 nt_used + 지문(IP+UA+언어 해시) 둘 다 기록, 하나라도 있으면 0회
 - 가입: 이메일+비번(scrypt). 인증 링크 클릭 시에만 credits=2 (한 번만). Google 로그인은 인증 완료로 간주
 - 세션: 서명 쿠키 nt_user=<email>.<hmac> (서버 세션 테이블 없음)
-ponytail: SQLite 파일. 컨테이너 재배포 시 날아감 → 결제 붙일 때 외부 DB로."""
+SQLite 파일, Lightsail 버킷에 동기화 (아래)."""
 import hashlib
 import hmac
 import json
@@ -60,6 +60,7 @@ class _Conn:
         self.con.execute("CREATE TABLE IF NOT EXISTS users(email TEXT PRIMARY KEY, salt BLOB, pw BLOB, verified INT DEFAULT 0, "
                          "google INT DEFAULT 0, credits INT DEFAULT 0, created REAL)")
         self.con.execute("CREATE TABLE IF NOT EXISTS guests(fp TEXT PRIMARY KEY, used INT DEFAULT 0, first REAL)")
+        self.con.execute("CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY, email TEXT, plan TEXT, usd TEXT, created REAL)")
         self.con.commit()
         self.n0 = self.con.total_changes
         return self.con

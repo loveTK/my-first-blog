@@ -104,6 +104,8 @@ select:hover{border-color:var(--fg)}
 .plan .count{font-family:"Gowun Batang",serif;font-weight:700;font-size:30px;line-height:1.2;margin-top:4px}
 .plan .count small{font-family:"IBM Plex Sans KR",sans-serif;font-weight:400;font-size:15px;color:var(--muted);margin-left:2px}
 .plan .price{font-size:17px}
+.plan .price small{font-size:13px;color:var(--muted);margin-left:2px}
+.pricing .note{margin:14px 0 0;font-size:13px;color:var(--muted)}
 .plan .unit{font-size:13px;color:var(--muted)}
 .plan .who{font-size:14px;color:var(--muted);margin-top:4px;flex:1}
 .plan button{margin-top:14px;width:100%}
@@ -211,30 +213,39 @@ footer a{color:inherit}
     <div class="plan">
       <div class="name">스타터</div>
       <div class="count">5<small>회</small></div>
-      <div class="price">9,900원</div>
-      <div class="unit">1회당 1,980원</div>
+      <div class="price">US$7.49 <small>≈ 9,900원</small></div>
+      <div class="unit">1회당 약 1,980원</div>
       <div class="who">이번 달 연습곡 몇 곡</div>
-      <button class="btn-p" type="button" disabled>준비 중</button>
+      <button class="btn-p buy" type="button" data-plan="starter" disabled>준비 중</button>
     </div>
     <div class="plan rec">
       <span class="badge">추천</span>
       <div class="name">스탠다드</div>
       <div class="count">30<small>회</small></div>
-      <div class="price">39,000원</div>
-      <div class="unit">1회당 1,300원</div>
+      <div class="price">US$29 <small>≈ 39,000원</small></div>
+      <div class="unit">1회당 약 1,300원</div>
       <div class="who">꾸준히 배우는 분께 가장 알맞아요</div>
-      <button class="btn-p" type="button" disabled>준비 중</button>
+      <button class="btn-p buy" type="button" data-plan="standard" disabled>준비 중</button>
     </div>
     <div class="plan">
       <div class="name">프로</div>
       <div class="count">100<small>회</small></div>
-      <div class="price">99,000원</div>
-      <div class="unit">1회당 990원</div>
+      <div class="price">US$74 <small>≈ 99,000원</small></div>
+      <div class="unit">1회당 약 990원</div>
       <div class="who">강사용. 학생 악보를 한꺼번에</div>
-      <button class="btn-p" type="button" disabled>준비 중</button>
+      <button class="btn-p buy" type="button" data-plan="pro" disabled>준비 중</button>
     </div>
   </div>
+  <p class="note">결제는 PayPal(달러)로 처리되며, 원화 금액은 환율에 따라 조금 달라질 수 있어요. 충전한 횟수는 계정에 남고 기한이 없습니다.</p>
 </section>
+
+<dialog id="pay" aria-labelledby="pay-title">
+  <button class="x" type="button" id="pay-x" aria-label="닫기">&times;</button>
+  <h2 id="pay-title">결제</h2>
+  <p class="tip" id="pay-desc"></p>
+  <div id="pp"></div>
+  <p class="msg" id="pay-msg" aria-live="polite"></p>
+</dialog>
 
 <dialog id="login" aria-labelledby="login-title">
   <button class="x" type="button" id="login-x" aria-label="닫기">&times;</button>
@@ -342,13 +353,41 @@ const showCredits = ({ left, user, verified }) => {
     if (left > 0) c.textContent = `무료 체험 ${left}회 남음 · 가입하면 2회 더 드려요`;
     else { c.textContent = '무료 체험을 사용했어요. 가입하면 2회 더 드려요'; btn('가입하기', () => openLogin(true)); }
   } else if (!verified) {
-    c.textContent = '이메일 인증을 완료하면 2회가 지급돼요';
+    c.textContent = left > 0 ? `남은 크레딧 ${left}회 · 이메일 인증하면 2회 더 드려요` : '이메일 인증을 완료하면 2회가 지급돼요';
     btn('인증 메일 다시 보내기', async e => { e.target.disabled = true; try { await api('/resend', { email: user }); e.target.textContent = '보냈어요'; } catch (err) { e.target.textContent = err.message; } });
   } else if (left > 0) c.textContent = `남은 크레딧 ${left}회`;
   else { c.textContent = '크레딧을 모두 사용했어요'; btn('요금제 보기', openPricing); }
 };
-const credits = async () => { try { const d = await (await fetch('/credits')).json(); setUser(d.user); showCredits(d); } catch (_) {} };
+let me = null;
+const credits = async () => { try { const d = await (await fetch('/credits')).json(); me = d.user; setUser(d.user); showCredits(d); } catch (_) {} };
 credits();
+
+// 결제 (PayPal). 서버가 금액을 정하고 확정까지 하므로 프론트는 주문 id만 오간다
+const pay = $('pay'), payMsg = $('pay-msg');
+$('pay-x').onclick = () => pay.close();
+pay.onclick = e => { if (e.target === pay) pay.close(); };
+(async () => {
+  try {
+    const cfg = await (await fetch('/pay/config')).json();
+    if (!cfg.client_id) return;
+    const sc = document.createElement('script'); sc.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.client_id)}&currency=USD&intent=capture&locale=ko_KR&disable-funding=paylater`;
+    sc.onload = () => document.querySelectorAll('.buy').forEach(b => {
+      const p = cfg.plans[b.dataset.plan]; b.disabled = false; b.textContent = '구매하기';
+      b.onclick = () => {
+        if (!me) { openLogin(false); msg.textContent = '구매하려면 먼저 로그인하세요.'; return; }
+        $('pay-title').textContent = `${p.name} ${p.credits}회`; $('pay-desc').textContent = `US$${p.usd} · 결제가 끝나면 ${me} 계정에 ${p.credits}회가 바로 충전돼요.`;
+        payMsg.textContent = ''; $('pp').innerHTML = ''; pay.showModal();
+        paypal.Buttons({
+          style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay' },
+          createOrder: async () => (await api('/pay/order', { plan: b.dataset.plan })).id,
+          onApprove: async d => { const r = await api('/pay/capture', { order_id: d.orderID }); pay.close(); s.className = 'status'; s.textContent = `${r.credited}회가 충전됐어요. 남은 크레딧 ${r.left}회`; credits(); $('tool').scrollIntoView({ block: 'start' }); },
+          onError: err => { payMsg.textContent = (err && err.message) || '결제에 실패했습니다.'; },
+        }).render('#pp');
+      };
+    });
+    document.head.append(sc);
+  } catch (_) {}
+})();
 
 $('f').onsubmit = async e => {
   e.preventDefault();

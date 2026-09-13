@@ -15,15 +15,18 @@ from starlette.background import BackgroundTask
 
 import auth
 import core
+import pay
 import render
 
 app = FastAPI()
 app.include_router(auth.router)
+app.include_router(pay.router)
 auth.rate_limit = lambda request: _check_rate_limit(request.client.host)
 
 MAX_UPLOAD = 20 * 1024 * 1024  # 20MB. 공개 API 무제한 업로드로 인한 리소스 고갈 방지
 RATE_LIMIT, RATE_WINDOW = 10, 60  # IP당 60초에 10건. ponytail: 메모리 딕셔너리(재시작하면 리셋, 컨테이너 1대 전제)
 _hits = collections.defaultdict(list)
+NO_CREDIT = "크레딧을 모두 사용했습니다. 요금제에서 충전해 주세요."
 
 
 
@@ -73,7 +76,7 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
                   mode: str = Form("greedy")):
     _check_rate_limit(request.client.host)
     if auth.credits(request)["left"] <= 0:
-        raise HTTPException(402, "무료 횟수를 모두 사용했습니다. 결제 기능은 준비 중입니다.")
+        raise HTTPException(402, NO_CREDIT)
     ext = os.path.splitext(file.filename)[1].lower()
     assert ext in (".pdf", ".jpg", ".jpeg", ".png"), ext
     data = await file.read()
@@ -94,7 +97,7 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
     if ext == ".pdf":
         resp.headers["X-Preview"] = _preview(imgs[0])
     if not auth.spend(request, resp):
-        raise HTTPException(402, "무료 횟수를 모두 사용했습니다. 결제 기능은 준비 중입니다.")
+        raise HTTPException(402, NO_CREDIT)
     return resp
 
 
