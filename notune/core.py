@@ -249,7 +249,9 @@ def detect_notes(page_rgb):
         heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black"})
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
-    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"]} for h in heads]
+    # ss/staff_top/staff_bot은 7단계 라벨 배치용
+    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "staff": h["staff"], "ss": ss,
+             "staff_top": staves[h["staff"]]["lines"][0], "staff_bot": staves[h["staff"]]["lines"][4]} for h in heads]
 
 
 NAMES = {  # 고정도: C=도. 옥타브는 표기 안 함
@@ -271,8 +273,87 @@ def note_name(pitch, lang):
     return name + {"#": "♯", "b": "♭", "": ""}[alter]
 
 
-def place_labels(notes, lang, position):
-    """음표 → [{"x","y","text","clef"}] 라벨 위치. 6단계(언어) + 7단계(배치)."""
-    assert position in ("below", "above"), position
-    # ponytail: 미구현. 6단계 계이름 딕셔너리, 7단계 배치 규칙(NOTUNE_PLAN §1.3).
-    return []
+def _overlap(a, b, gap=1):
+    return a[0] < b[2] + gap and b[0] < a[2] + gap and a[1] < b[3] + gap and b[1] < a[3] + gap
+
+
+def _chords(notes, ss):
+    """같은 오선에서 x가 0.35ss 안에 붙은 머리 = 화음 한 덩어리. x순 정렬된 그룹 리스트."""
+    groups = []
+    for n in sorted(notes, key=lambda n: (n["staff"], n["x"], n["y"])):
+        if groups and groups[-1][0]["staff"] == n["staff"] and abs(groups[-1][-1]["x"] - n["x"]) < 0.35 * ss:
+            groups[-1].append(n)
+        else:
+            groups.append([n])
+    return groups
+
+
+def place_labels(notes, lang, position, mode="greedy"):
+    """음표 → [{"x","y","text","clef","size"}] (x,y=박스 왼쪽 위).
+    greedy: 아래→위→좌우 0.5ss→폰트 85% 순서로 겹치지 않는 첫 자리. 화음은 세로 스택.
+    lane: 오선 아래(위) 레인에 x 겹침 없이 층층이. 라벨끼리 절대 안 겹침.
+    overlay: 머리 위에 덮어씀."""
+    assert position in ("below", "above") and mode in ("greedy", "lane", "overlay"), (position, mode)
+    if not notes:
+        return []
+    import render
+    ss = notes[0]["ss"]
+    out = []
+    if mode == "overlay":
+        size = 1.0 * ss
+        for n in notes:
+            text = note_name(n["pitch"], lang)
+            w, h = render.text_size(text, size)
+            out.append({"x": int(n["x"] - w / 2), "y": int(n["y"] - h / 2), "text": text, "clef": n["clef"], "size": size})
+        return out
+
+    heads = [(n["x"] - 0.6 * ss, n["y"] - 0.5 * ss, n["x"] + 0.6 * ss, n["y"] + 0.5 * ss) for n in notes]
+    placed = []
+    lanes = {}  # lane: (staff, side) -> [레인별 마지막 x끝]
+    for g in _chords(notes, ss):
+        g = sorted(g, key=lambda n: n["y"])  # 위 음 → 위 줄
+        text = "\n".join(note_name(n["pitch"], lang) for n in g)
+        clef, cx = g[0]["clef"], sum(n["x"] for n in g) / len(g)
+        top, bot = g[0]["y"] - 0.5 * ss, g[-1]["y"] + 0.5 * ss
+        if mode == "lane":
+            size = 1.2 * ss
+            w, h = render.text_size(text, size)
+            n0 = g[0]
+            same = [m for m in notes if m["staff"] == n0["staff"]]
+            base = (max(n0["staff_bot"], max(m["y"] for m in same)) + 0.8 * ss) if position == "below" \
+                else (min(n0["staff_top"], min(m["y"] for m in same)) - 0.8 * ss - h)
+            key = (n0["staff"], position)
+            ends = lanes.setdefault(key, [])
+            x0 = cx - w / 2
+            lane = next((i for i, e in enumerate(ends) if x0 > e + 2), len(ends))
+            if lane == len(ends):
+                ends.append(0)
+            ends[lane] = x0 + w
+            y0 = base + lane * (h + 2) if position == "below" else base - lane * (h + 2)
+            out.append({"x": int(x0), "y": int(y0), "text": text, "clef": clef, "size": size})
+            continue
+        # greedy
+        mine = [heads[notes.index(n)] for n in g]
+        others = [r for r in heads if r not in mine]
+        chosen = None
+        for size in (1.3 * ss, 1.3 * ss * 0.85):
+            w, h = render.text_size(text, size)
+            below, above = bot + 0.3 * ss, top - 0.3 * ss - h
+            order = [below, above] if position == "below" else [above, below]
+            cands = [(cx - w / 2 + dx, y) for y in order for dx in (0, -0.5 * ss, 0.5 * ss)]
+            for x0, y0 in cands:
+                r = (x0, y0, x0 + w, y0 + h)
+                if not any(_overlap(r, p) for p in placed) and not any(_overlap(r, o) for o in others):
+                    chosen = (x0, y0, size)
+                    break
+            if chosen:
+                break
+        if not chosen:  # ponytail: 자리 없으면 그냥 아래(겹침 허용). 리더라인은 안 함
+            size = 1.3 * ss * 0.85
+            w, h = render.text_size(text, size)
+            chosen = (cx - w / 2, bot + 0.3 * ss, size)
+        x0, y0, size = chosen
+        w, h = render.text_size(text, size)
+        placed.append((x0, y0, x0 + w, y0 + h))
+        out.append({"x": int(x0), "y": int(y0), "text": text, "clef": clef, "size": size})
+    return out

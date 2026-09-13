@@ -30,7 +30,8 @@ def _check_rate_limit(ip):
 
 
 @app.post("/convert")
-async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), position: str = Form("below")):
+async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), position: str = Form("below"),
+                  mode: str = Form("greedy")):
     _check_rate_limit(request.client.host)
     ext = os.path.splitext(file.filename)[1].lower()
     assert ext in (".pdf", ".jpg", ".jpeg", ".png"), ext
@@ -41,7 +42,7 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
     src, out = os.path.join(tmp, "in" + ext), os.path.join(tmp, "out" + ext)
     with open(src, "wb") as f:
         f.write(data)
-    imgs = [render.overlay(p, core.place_labels(core.detect_notes(p), lang, position))
+    imgs = [render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
             for p in core.load_pages(src)]
     if ext == ".pdf":
         imgs[0].save(out, save_all=True, append_images=imgs[1:])
