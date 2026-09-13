@@ -52,11 +52,13 @@ if __name__ == "__main__":
         json_path = os.path.splitext(img_path)[0] + ".json"
         assert os.path.exists(json_path), f"정답 json 없음: {json_path}"
         with open(json_path, encoding="utf-8") as f:
-            gt_notes = json.load(f)["notes"]
+            gt = json.load(f)
+        gt_notes, ignore = gt["notes"], gt.get("ignore", [])  # ignore: 정답을 만들 수 없는 구역(x1,y1,x2,y2). 그 안의 검출은 평가 제외
 
         det_notes = []
         for page in core.load_pages(img_path):
-            det_notes += core.detect_notes(page)
+            det_notes += [n for n in core.detect_notes(page)
+                          if not any(x1 <= n["x"] <= x2 and y1 <= n["y"] <= y2 for x1, y1, x2, y2 in ignore)]
 
         r = score_one(gt_notes, det_notes)
         for k in totals:

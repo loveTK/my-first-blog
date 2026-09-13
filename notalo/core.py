@@ -80,7 +80,8 @@ def _clef_key_end(ink, ys, space, x0):
         x += 1
     # 음자리표 = x0 근처(4ss 안) 첫 넓은(≥1.5ss) 덩어리. 그 앞의 브레이스·바선은 건너뜀
     ci = next((k for k, (xs, xe) in enumerate(blobs) if xe - xs >= 1.5 * space and xs - x0 < 4 * space), None)
-    assert ci is not None, "음자리표 못 찾음"
+    if ci is None:  # 음자리표 없는 오선(이어지는 줄 등). 음자리표는 YOLO가 따로 잡으니 여기선 x0로 둠
+        return x0, x0
     clef_x1 = end = blobs[ci][1]
     # 조표·박자표: 틈 ≤1.3ss로 이어지고 폭 ≤1.9ss. 음표 무리(빔·화음)는 더 넓어서 멈춤.
     # ponytail: 조표 바로 뒤(틈≤1.3ss) 홀로 있는 2분음표는 마스크에 먹힘 → 실측 후 임계값 조정
@@ -148,7 +149,7 @@ def _staff_of(y, staves):
 
 def _has_ledger(ink, x, y, ss):
     """머리 주변(±0.6ss 행)에 머리보다 넓은(1.8ss) 가로 잉크 줄 = 덧줄."""
-    half = int(0.9 * ss)
+    half = int(0.6 * ss)  # 덧줄이 짧은 서체(gutenberg 등)도 잡히게 머리 폭(≈1.2ss)만 본다
     rows = ink[max(int(y - 0.6 * ss), 0):int(y + 0.6 * ss) + 1, max(x - half, 0):x + half + 1] > 0
     assert rows.size
     return bool(rows.all(axis=1).any())
@@ -174,7 +175,14 @@ def detect_barlines(ink, s, heads, ss):
 
 
 LETTERS = "CDEFGAB"
-CLEF_BOTTOM = {"clef_g": 4 * 7 + 2, "clef_f": 2 * 7 + 4, "clef_c": 3 * 7 + 3}  # 맨 아래 줄 = E4 / G2 / F3 (7음계 절대 인덱스)
+CLEF_BOTTOM = {"clef_g": 4 * 7 + 2, "clef_f": 2 * 7 + 4, "clef_c": 3 * 7 + 3, "clef_c_tenor": 3 * 7 + 1}  # 맨 아래 줄 = E4 / G2 / F3(알토) / D3(테너)
+
+
+def _clef_kind(d, s):
+    """YOLO는 C 음자리표를 한 클래스로 봄. 기호 중심이 가운데 줄보다 반 칸 이상 위면 테너(4번째 줄), 아니면 알토."""
+    if d["cls"] == "clef_c" and d["y"] < s["lines"][2] - 0.5 * s["space"]:
+        return "clef_c_tenor"
+    return d["cls"]
 
 
 def _step_pitch(y, s, clef):
@@ -185,8 +193,27 @@ def _step_pitch(y, s, clef):
     return LETTERS[idx % 7], idx // 7
 
 
+SHARP_ORDER, FLAT_ORDER = "FCGDAEB", "BEADGCF"
+
+
+def _dedupe(ds, ss):
+    """같은 기호에 상자 2개(조각 검출) → x 0.4ss 이내이고 세로로 절반 이상 겹치면 신뢰도 높은 것만."""
+    ds, kept = sorted(ds, key=lambda d: -d["conf"]), []
+    for d in ds:
+        dup = False
+        for k in kept:
+            ov = min(d["y"] + d["h"] / 2, k["y"] + k["h"] / 2) - max(d["y"] - d["h"] / 2, k["y"] - k["h"] / 2)
+            if abs(d["x"] - k["x"]) < 0.4 * ss and ov > 0.5 * min(d["h"], k["h"]):
+                dup = True
+                break
+        if not dup:
+            kept.append(d)
+    return sorted(kept, key=lambda d: d["x"])
+
+
 def assign_pitches(ink, staves, dets, heads):
-    """음자리표·조표·임시표(마디 내 유지) 반영해 heads에 pitch 채움. 반환: heads (pitch, clef 추가)."""
+    """음자리표·조표·임시표(마디 내 유지) 반영해 heads에 pitch 채움. 반환: heads (pitch, clef 추가).
+    조표 = 음자리표/마디선 뒤 음표가 나오기 전의 임시표 묶음. 개수로 정함(♯ F C G D A E B / ♭ B E A D G C F 순), 제자리표 묶음은 조표 취소."""
     ss = float(np.median([s["space"] for s in staves]))
     by_staff = {i: [] for i in range(len(staves))}
     for d in dets:
@@ -197,29 +224,51 @@ def assign_pitches(ink, staves, dets, heads):
             by_staff[si].append(d)
     for si, s in enumerate(staves):
         hs = sorted((h for h in heads if h["staff"] == si), key=lambda h: h["x"])
-        syms = sorted(by_staff[si], key=lambda d: d["x"])
-        clefs = [d for d in syms if d["cls"].startswith("clef")] or [{"x": s["x0"], "cls": "clef_g"}]  # ponytail: 음자리표 못 찾으면 높은음자리표
+        syms = by_staff[si]
+        clefs = _dedupe([d for d in syms if d["cls"].startswith("clef")], 1.5 * ss) or [{"x": s["x0"], "cls": "clef_g"}]  # ponytail: 음자리표 못 찾으면 높은음자리표
+        accs = _dedupe([d for d in syms if not d["cls"].startswith("clef")], ss)
         bars = detect_barlines(ink, s, hs, ss)
-        key, measure_acc, cur_bar, cur_clef = {}, {}, -1, clefs[0]["cls"]
-        events = [("clef", d["x"], d) for d in clefs] + [("acc", d["x"], d) for d in syms if not d["cls"].startswith("clef")] + [("head", h["x"], h) for h in hs]
+        key, measure_acc, cur_bar, cur_clef = {}, {}, -1, _clef_kind(clefs[0], s)
+        events = [("clef", d["x"], d) for d in clefs] + [("acc", d["x"], d) for d in accs] + [("head", h["x"], h) for h in hs]
         events.sort(key=lambda e: e[1])
+        head_since_anchor, group = False, []  # group: 음자리표/마디선 뒤 음표 전에 나온 임시표들(조표 후보)
+
+        def flush():
+            nonlocal group, key
+            if not group:
+                return
+            kinds = {g["cls"] for g in group}
+            if kinds == {"natural"}:
+                key = {}
+            elif "sharp" in kinds:
+                key = {l: 1 for l in SHARP_ORDER[:sum(g["cls"] == "sharp" for g in group)]}
+            else:
+                key = {l: -1 for l in FLAT_ORDER[:sum(g["cls"] == "flat" for g in group)]}
+            group = []
+
         for kind, x, d in events:
             bar = sum(1 for b in bars if b < x)
             if bar != cur_bar:
-                cur_bar, measure_acc = bar, {}
+                flush()
+                cur_bar, measure_acc, head_since_anchor = bar, {}, False
             if kind == "clef":
-                cur_clef = d["cls"]
+                flush()
+                cur_clef, head_since_anchor = _clef_kind(d, s), False
             elif kind == "acc":
                 alter = {"sharp": 1, "flat": -1, "natural": 0}[d["cls"]]
                 ay = d["y"] + 0.28 * d["h"] if d["cls"] == "flat" else d["y"]  # ♭은 고리(아래쪽)가 음 위치. 박스 중심은 0.7ss 위
-                letter, octv = _step_pitch(ay, s, cur_clef)
-                # 바로 오른쪽(0.3~3ss)에 같은 높이 머리가 있으면 그 음표의 임시표, 아니면 조표
-                attached = any(0.3 * ss < h["x"] - x < 3.0 * ss and abs(h["y"] - ay) < 0.6 * ss for h in hs)
-                if attached:
+                # 바로 오른쪽(0.3~3ss)에 같은 높이 머리가 있으면 그 음표의 임시표
+                near = [h for h in hs if 0.3 * ss < h["x"] - x < 3.0 * ss and abs(h["y"] - ay) < 0.6 * ss]
+                if near:
+                    flush()
+                    letter, octv = _step_pitch(near[0]["y"], s, cur_clef)
                     measure_acc[(letter, octv)] = alter
-                else:
-                    key[letter] = alter
+                elif not head_since_anchor:
+                    group.append(d)  # 조표 후보 (묶음은 다음 음표/마디선/음자리표에서 확정)
+                # 그 외(음표 뒤에 홀로 있는 임시표)는 무시 — 화음 임시표 등은 near에서 잡힘
             else:
+                flush()
+                head_since_anchor = True
                 letter, octv = _step_pitch(d["y"], s, cur_clef)
                 alter = measure_acc.get((letter, octv), key.get(letter, 0))
                 d["pitch"] = f"{letter}{'#' if alter > 0 else 'b' if alter < 0 else ''}{octv}"
@@ -246,7 +295,14 @@ def detect_notes(page_rgb):
         outside = max(s["lines"][0] - d["y"], d["y"] - s["lines"][4])
         if outside > 0.75 * ss and not _has_ledger(ink, d["x"], d["y"], ss):
             continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 머리
-        heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black"})
+        heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
+    # 같은 머리에 상자 2개(클래스 다른 중복 검출) → 신뢰도 높은 것만
+    heads.sort(key=lambda h: -h["conf"])
+    kept = []
+    for h in heads:
+        if not any(abs(h["x"] - k["x"]) < 0.5 * ss and abs(h["y"] - k["y"]) < 0.5 * ss for k in kept):
+            kept.append(h)
+    heads = kept
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용
