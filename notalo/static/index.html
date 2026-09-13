@@ -196,14 +196,14 @@ footer p{margin:4px 0}
 
 <section class="pricing" id="pricing">
   <h2>요금제</h2>
-  <p class="sub">무료 2회는 가입 없이 바로. 더 필요하면 횟수만큼만 사세요. 구독이 아니라 사용한 만큼만 냅니다.</p>
+  <p class="sub">가입 없이 1회, 가입하고 이메일 인증하면 2회 더. 더 필요하면 횟수만큼만 사세요. 구독이 아니라 사용한 만큼만 냅니다.</p>
   <div class="plans">
     <div class="plan">
       <div class="name">무료</div>
-      <div class="count">2<small>회</small></div>
+      <div class="count">1<small>회</small></div>
       <div class="price">0원</div>
-      <div class="unit">체험용</div>
-      <div class="who">한 곡 정도 먼저 해보고 싶을 때</div>
+      <div class="unit">가입하면 +2회</div>
+      <div class="who">먼저 한 곡 해보고 싶을 때</div>
       <button class="btn-o" type="button" id="plan-free">무료로 시작하기</button>
     </div>
     <div class="plan">
@@ -271,59 +271,66 @@ drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files); };
 const openPricing = () => $('pricing').scrollIntoView({ block: 'start' });
-$('pricing-btn').onclick = openPricing;
-$('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
-
-// 로그인
-const login = $('login'), msg = $('login-msg');
 const api = async (path, body) => {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) { let d = '실패했습니다.'; try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
   return r.status === 204 ? null : r.json();
 };
+const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
+$('pricing-btn').onclick = openPricing;
+$('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
+
+// 로그인
+const login = $('login'), msg = $('login-msg');
+const openLogin = asSignup => { setMode(!!asSignup); login.showModal(); };
 let signup = false;
 const setMode = on => { signup = on; $('login-title').textContent = on ? '회원가입' : '로그인'; $('login-submit').textContent = on ? '인증 메일 받고 가입하기' : '로그인';
   show($('signup-tip'), on); $('pw').autocomplete = on ? 'new-password' : 'current-password'; msg.textContent = '';
   $('swap').innerHTML = on ? '이미 계정이 있나요? <a id="to-login">로그인</a>' : '계정이 없나요? <a id="to-signup">회원가입</a>';
   ($('to-login') || $('to-signup')).onclick = () => setMode(!on); };
-$('login-btn').onclick = () => { setMode(false); login.showModal(); };
+$('login-btn').onclick = () => openLogin(false);
 $('login-x').onclick = () => login.close();
 login.onclick = e => { if (e.target === login) login.close(); };
-const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
-$('logout-btn').onclick = async () => { await api('/auth/logout', {}); setUser(null); };
+$('logout-btn').onclick = async () => { await api('/logout', {}); credits(); };
 $('google-btn').onclick = () => { msg.textContent = 'Google 로그인은 준비 중입니다.'; };
 $('login-form').onsubmit = async e => {
   e.preventDefault(); msg.textContent = '';
   const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
   btn.disabled = true;
   try {
-    if (signup) { await api('/auth/signup', body); msg.textContent = `${body.email} 으로 인증 메일을 보냈어요. 메일의 링크를 눌러 주세요.`; }
-    else { const { email } = await api('/auth/login', body); setUser(email); login.close(); }
+    if (signup) { await api('/signup', body); msg.textContent = `인증 메일을 보냈어요. ${body.email} 메일함을 확인해 주세요.`; credits(); }
+    else { await api('/login', body); login.close(); credits(); }
   } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
 };
 setMode(false);
 (async () => {
   try {
-    const { email } = await (await fetch('/auth/me')).json(); setUser(email);
-    if (location.search.includes('verified=1')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 로그인되었습니다.'; }
+    if (location.search.includes('verified=1')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 무료 2회가 지급됐습니다.'; }
     const { google_client_id } = await (await fetch('/auth/config')).json();
     if (!google_client_id) return;
     const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
     sc.onload = () => {
       google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
-        try { const { email } = await api('/auth/google', { credential }); setUser(email); login.close(); } catch (err) { msg.textContent = err.message; } } });
+        try { await api('/login/google', { credential }); login.close(); credits(); } catch (err) { msg.textContent = err.message; } } });
       google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 344 });
       show($('google-btn'), false);
     };
     document.head.append(sc);
   } catch (_) {}
 })();
-const showCredits = left => {
-  const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out');
-  c.textContent = left > 0 ? `무료 변환 ${left}회 남음` : '무료 변환을 모두 사용했습니다.';
-  if (left <= 0) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-o btn-s'; b.textContent = '요금제 보기'; b.onclick = openPricing; c.append(b); }
+const showCredits = ({ left, user, verified }) => {
+  const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out'); c.textContent = '';
+  const btn = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-o btn-s'; b.textContent = label; b.onclick = fn; c.append(b); };
+  if (!user) {
+    if (left > 0) c.textContent = `무료 체험 ${left}회 남음 · 가입하면 2회 더 드려요`;
+    else { c.textContent = '무료 체험을 사용했어요. 가입하면 2회 더 드려요'; btn('가입하기', () => openLogin(true)); }
+  } else if (!verified) {
+    c.textContent = '이메일 인증을 완료하면 2회가 지급돼요';
+    btn('인증 메일 다시 보내기', async e => { e.target.disabled = true; try { await api('/resend', { email: user }); e.target.textContent = '보냈어요'; } catch (err) { e.target.textContent = err.message; } });
+  } else if (left > 0) c.textContent = `남은 크레딧 ${left}회`;
+  else { c.textContent = '크레딧을 모두 사용했어요'; btn('요금제 보기', openPricing); }
 };
-const credits = async () => { try { showCredits((await (await fetch('/credits')).json()).left); } catch (_) {} };
+const credits = async () => { try { const d = await (await fetch('/credits')).json(); setUser(d.user); showCredits(d); } catch (_) {} };
 credits();
 
 $('f').onsubmit = async e => {
