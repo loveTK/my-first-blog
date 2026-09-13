@@ -34,12 +34,12 @@ DB = os.environ.get("NOTALO_DB", os.path.join(HERE, "notalo.db"))
 # 시작: 버킷에 있으면 내려받음 / 쓰기(INSERT·UPDATE)가 있었던 연결이 닫힐 때마다 올림. 컨테이너 1대 전제.
 BUCKET = os.environ.get("NOTALO_BUCKET")
 _s3 = None
+_err = lambda e: getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
 if BUCKET:
     import boto3
     _s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"),
                        aws_access_key_id=os.environ.get("NOTALO_BUCKET_KEY_ID") or None,
                        aws_secret_access_key=os.environ.get("NOTALO_BUCKET_KEY_SECRET") or None)
-    _err = lambda e: getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
     try:
         _s3.download_file(BUCKET, "notalo.db", DB)
         print("[db] 버킷에서 내려받음", flush=True)
