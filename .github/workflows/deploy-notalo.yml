@@ -29,12 +29,20 @@ jobs:
           echo "image=$(grep -oP '(?<=Refer to this image as ")[^"]+' push.log)" >> "$GITHUB_OUTPUT"
       - name: 서버 사양 micro(1GB, $10/월)로 — YOLO ONNX 추론 메모리. 이미 micro면 no-op
         run: aws lightsail update-container-service --service-name notune --power micro --scale 1
-      - run: |
-          cat > deploy.json <<EOF
-          {"notune": {"image": "${{ steps.push.outputs.image }}", "ports": {"8000": "HTTP"},
-                      "environment": {"NOTALO_SECRET": "${{ secrets.NOTALO_SECRET }}", "SMTP_USER": "${{ secrets.SMTP_USER }}",
-                                      "SMTP_PASS": "${{ secrets.SMTP_PASS }}", "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}"}}}
-          EOF
+      - env:  # 시크릿에 줄바꿈/따옴표가 섞여 들어와도 JSON이 깨지지 않게 python으로 생성 (값은 strip)
+          IMAGE: ${{ steps.push.outputs.image }}
+          NOTALO_SECRET: ${{ secrets.NOTALO_SECRET }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          keys = ["NOTALO_SECRET", "SMTP_USER", "SMTP_PASS", "GOOGLE_CLIENT_ID"]
+          env = {k: os.environ.get(k, "").strip() for k in keys}
+          print("secrets set:", {k: bool(v) for k, v in env.items()})
+          json.dump({"notune": {"image": os.environ["IMAGE"], "ports": {"8000": "HTTP"}, "environment": env}}, open("deploy.json", "w"))
+          PY
           aws lightsail create-container-service-deployment \
             --service-name notune \
             --containers file://deploy.json \
