@@ -1,5 +1,5 @@
 """YOLOv8n 학습 → ONNX 내보내기. 사용: py -3 train/train.py <data.yaml> [epochs]
-결과: notune/weights/notes.onnx (서빙은 onnxruntime만 씀, torch 불필요)."""
+결과: notalo/weights/notes.onnx (서빙은 onnxruntime만 씀, torch 불필요)."""
 import os
 import shutil
 import sys

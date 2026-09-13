@@ -22,7 +22,7 @@ RATE_LIMIT, RATE_WINDOW = 10, 60  # IP당 60초에 10건. ponytail: 메모리 �
 _hits = collections.defaultdict(list)
 
 FREE = 2  # 쿠키 기반 무료 횟수. ponytail: 쿠키 지우면 리셋됨(스펙 허용). 결제(PayPal)는 별도 신호 후
-SECRET = os.environ.get("NOTUNE_SECRET", "dev-secret").encode()  # 배포에선 환경변수로. 없으면 서명 위조 가능
+SECRET = (os.environ.get("NOTALO_SECRET") or "dev-secret").encode()  # 배포에선 환경변수로. 없으면 서명 위조 가능
 
 
 def _sign(n):

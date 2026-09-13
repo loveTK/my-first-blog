@@ -1,4 +1,4 @@
-# Render 배포 시 Root Directory를 notune/ 로 지정.
+# Render 배포 시 Root Directory를 notalo/ 로 지정.
 FROM python:3.11-slim
 
 # poppler=pdf2image, fonts-noto-cjk=한/일/중 라벨(ko/ja 지원), libgl1/libglib2.0=opencv-python(비-headless) 런타임 의존성

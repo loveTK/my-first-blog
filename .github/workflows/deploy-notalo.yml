@@ -1,8 +1,8 @@
-name: deploy notune to lightsail
+name: deploy notalo to lightsail
 on:
   push:
     branches: [claude/playwright-plugin-install-bgpysg]
-    paths: [notune/**, .github/workflows/deploy-notune.yml]
+    paths: [notalo/**, .github/workflows/deploy-notalo.yml]
   workflow_dispatch: {}
 
 jobs:
@@ -19,12 +19,12 @@ jobs:
           sudo curl -sL https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
             -o /usr/local/bin/lightsailctl
           sudo chmod +x /usr/local/bin/lightsailctl
-      - run: docker build -t notune notune/
+      - run: docker build -t notalo notalo/
       - id: push
         run: |
           set -euo pipefail
           aws lightsail push-container-image \
-            --service-name notune --label notune --image notune \
+            --service-name notune --label notune --image notalo \
             | tee push.log
           echo "image=$(grep -oP '(?<=Refer to this image as ")[^"]+' push.log)" >> "$GITHUB_OUTPUT"
       - name: 서버 사양 micro(1GB, $10/월)로 — YOLO ONNX 추론 메모리. 이미 micro면 no-op
@@ -32,7 +32,7 @@ jobs:
       - run: |
           cat > deploy.json <<EOF
           {"notune": {"image": "${{ steps.push.outputs.image }}", "ports": {"8000": "HTTP"},
-                      "environment": {"NOTUNE_SECRET": "${{ secrets.NOTUNE_SECRET }}"}}}
+                      "environment": {"NOTALO_SECRET": "${{ secrets.NOTALO_SECRET }}"}}}
           EOF
           aws lightsail create-container-service-deployment \
             --service-name notune \

@@ -94,7 +94,7 @@ def _clef_key_end(ink, ys, space, x0):
 TRAIN_SS = 16.5  # 학습 데이터(DeepScoresV2) staff space(px). 추론 전 페이지를 이 크기로 맞춤
 TILE, STRIDE = 1024, 896
 CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
-WEIGHTS = os.environ.get("NOTUNE_WEIGHTS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "notes.onnx"))
+WEIGHTS = os.environ.get("NOTALO_WEIGHTS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "notes.onnx"))
 _sess = None
 
 
