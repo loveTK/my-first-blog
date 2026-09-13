@@ -14,6 +14,7 @@
 :root{--bg:#F5F5F0;--fg:#1B1B18;--muted:#6E6E66;--line:#DEDED6;--accent:#1F7A4A;--accent-ink:#165A37;--panel:#FFFFFF;--err:#B3261E;--r:6px}
 @media(prefers-color-scheme:dark){:root{--bg:#1A1A17;--fg:#EDECE4;--muted:#A09F96;--line:#3A3A34;--accent:#3FA46C;--accent-ink:#8ED5AE;--panel:#232320;--err:#F28B82}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{background:var(--bg);scroll-behavior:smooth}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;word-break:keep-all;background:var(--bg);color:var(--fg);font:16px/1.65 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;padding:0 24px}
@@ -79,13 +80,15 @@ select:hover{border-color:var(--fg)}
 .status{margin:14px 0 0;font-size:14px;min-height:22px}
 .status.err{color:var(--err)}
 
-/* 결과 (3단계) */
-.result{margin-top:34px;border-top:1px solid var(--line);padding-top:26px}
+/* 결과 */
+.result{margin-top:48px;border-top:1px solid var(--line);padding-top:40px}
+.result h2{font-family:"Gowun Batang","Nanum Myeongjo",serif;font-weight:700;font-size:24px;margin:0 0 6px}
+.result .note{margin:0 0 18px;font-size:14px;color:var(--muted)}
 .result img{width:100%;border:1px solid var(--line);border-radius:var(--r);background:#fff;display:block}
-.skel{height:280px;border-radius:var(--r);background:linear-gradient(90deg,var(--panel),var(--line),var(--panel));background-size:200% 100%;animation:sh 1.2s linear infinite}
+.skel{height:360px;border-radius:var(--r);background:linear-gradient(90deg,var(--panel),var(--line),var(--panel));background-size:200% 100%;animation:sh 1.2s linear infinite}
 @media(prefers-reduced-motion:reduce){.skel{animation:none}}
 @keyframes sh{to{background-position:-200% 0}}
-.dl{display:inline-block;margin-top:14px;font-weight:500;color:var(--accent-ink);text-decoration:none;border-bottom:1.5px solid currentColor}
+.dl{display:inline-block;margin-top:20px;text-decoration:none}
 
 /* 푸터 (5단계) */
 footer{margin-top:72px;padding:20px 0 32px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
@@ -147,10 +150,11 @@ footer p{margin:4px 0}
   </form>
 
   <section class="result" id="result" hidden>
+    <h2>변환 결과</h2>
+    <p class="note" id="pdfnote" hidden>첫 페이지만 미리 보여드려요. 나머지 페이지는 내려받은 파일에 들어 있습니다.</p>
     <div class="skel" id="skel" hidden></div>
     <img id="img" hidden alt="계이름이 적힌 악보 미리보기">
-    <p id="pdfnote" hidden>PDF는 미리보기 대신 파일로 내려받습니다.</p>
-    <a id="dl" class="dl" hidden>결과 파일 내려받기</a>
+    <a id="dl" class="dl btn-p" hidden>결과 파일 내려받기</a>
   </section>
 </main>
 
@@ -196,8 +200,8 @@ $('f').onsubmit = async e => {
     }
     const b = await r.blob(), u = URL.createObjectURL(b);
     const dl = $('dl'); dl.href = u; dl.download = file.files[0].name.replace(/\.(\w+)$/, '_plus.$1');
-    show($('skel'), false); show(dl, true);
-    if (isPdf) show($('pdfnote'), true); else { $('img').src = u; show($('img'), true); }
+    show($('skel'), false); show(dl, true); show($('pdfnote'), isPdf);
+    $('img').src = isPdf ? r.headers.get('X-Preview') : u; show($('img'), true);
     s.textContent = '완료'; credits();
   } catch (err) {
     show($('result'), false); s.className = 'status err'; s.textContent = err.message;
