@@ -136,5 +136,13 @@
  "faq.a5": "No. I file caricati e i risultati vengono eliminati immediatamente dopo l'elaborazione.",
  "footer.credit_pre": "Il modello di rilevamento delle note è stato addestrato sul dataset ",
  "footer.credit_post": " (Tuggener et al., CC BY 4.0).",
- "footer.privacy": "I file caricati e i risultati vengono eliminati subito dopo l'elaborazione."
+ "footer.privacy": "I file caricati e i risultati vengono eliminati subito dopo l'elaborazione.",
+ "tool.status_uploading": "Caricamento…",
+ "tool.status_one_file": "Scegli un solo file alla volta.",
+ "processing.title": "Conversione dello spartito in corso…",
+ "processing.sub": "Di solito richiede circa 10 secondi.",
+ "processing.error_title": "Qualcosa è andato storto",
+ "processing.back": "Torna a Notalo",
+ "processing.ad_label": "Pubblicità",
+ "credits.free_mode": "Gratuito"
 }

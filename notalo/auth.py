@@ -77,6 +77,7 @@ class _Conn:
 SMTP_USER, SMTP_PASS = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GUEST_FREE, SIGNUP_BONUS = 1, 2
+FREE_MODE = True  # 초기 무료+애드센스 전환 기간: 크레딧 체크/차감 건너뜀. 유료 전환 시 False로.
 COOKIE_AGE = 30 * 24 * 3600
 router = APIRouter()
 rate_limit = lambda request: None  # app.py가 IP 레이트리밋 함수 주입
@@ -137,6 +138,9 @@ def guest_mark(request, resp):
 def credits(request):
     """{'left', 'user', 'verified'}"""
     email = current_user(request)
+    if FREE_MODE:  # 무료 전환 기간: 크레딧 숫자 대신 free_mode 플래그, 로그인 상태는 그대로 보여줌
+        row = _user_row(email) if email else None
+        return {"left": 999, "user": email, "verified": bool(row and row[0]) if email else False, "free_mode": True}
     if email:
         row = _user_row(email)
         if row:
@@ -146,6 +150,8 @@ def credits(request):
 
 def spend(request, resp):
     """변환 성공 후 1회 차감. 잔여 없으면 False."""
+    if FREE_MODE:
+        return True
     email = current_user(request)
     row = _user_row(email) if email else None
     if row:

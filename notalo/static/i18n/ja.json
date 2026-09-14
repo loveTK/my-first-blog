@@ -136,5 +136,13 @@
  "faq.a5": "いいえ。アップロードしたファイルと結果は処理後すぐに削除されます。",
  "footer.credit_pre": "音符検出モデルは ",
  "footer.credit_post": " データセット（Tuggener et al., CC BY 4.0）で学習しました。",
- "footer.privacy": "アップロードしたファイルと結果は処理後すぐに削除されます。"
+ "footer.privacy": "アップロードしたファイルと結果は処理後すぐに削除されます。",
+ "tool.status_uploading": "アップロード中…",
+ "tool.status_one_file": "一度に1つのファイルのみ選択してください。",
+ "processing.title": "楽譜を変換しています…",
+ "processing.sub": "通常10秒ほどかかります。",
+ "processing.error_title": "問題が発生しました",
+ "processing.back": "Notaloに戻る",
+ "processing.ad_label": "広告",
+ "credits.free_mode": "無料でご利用いただけます"
 }

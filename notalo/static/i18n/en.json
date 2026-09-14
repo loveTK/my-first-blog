@@ -136,5 +136,13 @@
  "faq.a5": "No. Uploaded files and results are deleted immediately after processing.",
  "footer.credit_pre": "The note-detection model was trained on the ",
  "footer.credit_post": " dataset (Tuggener et al., CC BY 4.0).",
- "footer.privacy": "Uploaded files and results are deleted right after processing."
+ "footer.privacy": "Uploaded files and results are deleted right after processing.",
+ "tool.status_uploading": "Uploading…",
+ "tool.status_one_file": "Please choose only one file at a time.",
+ "processing.title": "Converting your sheet music…",
+ "processing.sub": "This usually takes about 10 seconds.",
+ "processing.error_title": "Something went wrong",
+ "processing.back": "Back to Notalo",
+ "processing.ad_label": "Advertisement",
+ "credits.free_mode": "Free to use"
 }

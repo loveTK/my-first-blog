@@ -136,5 +136,13 @@
  "faq.a5": "아니요. 업로드한 파일과 결과물은 처리 직후 바로 삭제됩니다.",
  "footer.credit_pre": "음표 인식 모델은 ",
  "footer.credit_post": " 데이터셋(Tuggener et al., CC BY 4.0)으로 학습했습니다.",
- "footer.privacy": "업로드한 파일과 결과는 처리 직후 삭제됩니다."
+ "footer.privacy": "업로드한 파일과 결과는 처리 직후 삭제됩니다.",
+ "tool.status_uploading": "업로드 중…",
+ "tool.status_one_file": "한 번에 하나의 파일만 처리할 수 있어요.",
+ "processing.title": "악보를 변환하고 있어요…",
+ "processing.sub": "보통 10초쯤 걸려요.",
+ "processing.error_title": "문제가 발생했어요",
+ "processing.back": "Notalo로 돌아가기",
+ "processing.ad_label": "광고",
+ "credits.free_mode": "무료로 이용 가능"
 }

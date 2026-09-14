@@ -136,5 +136,13 @@
  "faq.a5": "Não. Os arquivos enviados e os resultados são excluídos imediatamente após o processamento.",
  "footer.credit_pre": "O modelo de detecção de notas foi treinado com o conjunto de dados ",
  "footer.credit_post": " (Tuggener et al., CC BY 4.0).",
- "footer.privacy": "Os arquivos enviados e os resultados são excluídos logo após o processamento."
+ "footer.privacy": "Os arquivos enviados e os resultados são excluídos logo após o processamento.",
+ "tool.status_uploading": "Enviando…",
+ "tool.status_one_file": "Escolha apenas um arquivo por vez.",
+ "processing.title": "Convertendo sua partitura…",
+ "processing.sub": "Isso geralmente leva cerca de 10 segundos.",
+ "processing.error_title": "Algo deu errado",
+ "processing.back": "Voltar ao Notalo",
+ "processing.ad_label": "Publicidade",
+ "credits.free_mode": "Grátis para usar"
 }

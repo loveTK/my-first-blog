@@ -136,5 +136,13 @@
  "faq.a5": "Nein. Hochgeladene Dateien und Ergebnisse werden sofort nach der Verarbeitung gelöscht.",
  "footer.credit_pre": "Das Notenerkennungsmodell wurde mit dem Datensatz ",
  "footer.credit_post": " trainiert (Tuggener et al., CC BY 4.0).",
- "footer.privacy": "Hochgeladene Dateien und Ergebnisse werden direkt nach der Verarbeitung gelöscht."
+ "footer.privacy": "Hochgeladene Dateien und Ergebnisse werden direkt nach der Verarbeitung gelöscht.",
+ "tool.status_uploading": "Wird hochgeladen…",
+ "tool.status_one_file": "Bitte wähle jeweils nur eine Datei aus.",
+ "processing.title": "Deine Noten werden umgewandelt…",
+ "processing.sub": "Das dauert normalerweise etwa 10 Sekunden.",
+ "processing.error_title": "Etwas ist schiefgelaufen",
+ "processing.back": "Zurück zu Notalo",
+ "processing.ad_label": "Werbung",
+ "credits.free_mode": "Kostenlos nutzbar"
 }

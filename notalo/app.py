@@ -5,6 +5,7 @@ import re
 import secrets
 import shutil
 import tempfile
+import threading
 import time
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
@@ -101,4 +102,85 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
     return resp
 
 
-app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True))
+# ---- job 기반 처리 (무료+애드센스 전환: /processing 페이지로 실제 이동, 페이지뷰로 집계) ----
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+JOB_TTL = 1800  # 30분 지난 job은 정리 (결과 안 받아간 것 포함)
+_jobs = {}
+
+
+def _sweep_jobs():
+    now = time.time()
+    for jid, j in list(_jobs.items()):
+        if now - j["created"] > JOB_TTL:
+            shutil.rmtree(j.get("tmp", ""), ignore_errors=True)
+            del _jobs[jid]
+
+
+def _run_job(job_id, src, ext, lang, position, mode):
+    try:
+        imgs = [render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
+                for p in core.load_pages(src)]
+        tmp = os.path.dirname(src)
+        out = os.path.join(tmp, "out" + ext)
+        if ext == ".pdf":
+            imgs[0].save(out, save_all=True, append_images=imgs[1:])
+        else:
+            imgs[0].save(out)
+        preview = _preview(imgs[0]) if ext == ".pdf" else None
+        _jobs[job_id].update(status="done", out=out, preview=preview)
+    except Exception:
+        shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
+        _jobs[job_id].update(status="error")
+
+
+@app.post("/jobs")
+async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"), position: str = Form("below"),
+                      mode: str = Form("greedy")):
+    _check_rate_limit(request.client.host)
+    _sweep_jobs()
+    if auth.credits(request)["left"] <= 0:
+        raise HTTPException(402, NO_CREDIT)
+    ext = os.path.splitext(file.filename)[1].lower()
+    assert ext in (".pdf", ".jpg", ".jpeg", ".png"), ext
+    data = await file.read()
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, "파일이 너무 큽니다(20MB 제한).")
+    tmp = tempfile.mkdtemp()
+    src = os.path.join(tmp, "in" + ext)
+    with open(src, "wb") as f:
+        f.write(data)
+    name = os.path.splitext(file.filename)[0] + "_plus" + ext
+    job_id = secrets.token_urlsafe(16)
+    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time()}
+    threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode), daemon=True).start()
+    return {"id": job_id}
+
+
+@app.get("/jobs/{job_id}/status")
+def job_status(job_id: str):
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404)
+    return {"status": job["status"]}
+
+
+@app.get("/jobs/{job_id}/result")
+def job_result(job_id: str, request: Request):
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        raise HTTPException(404)
+    resp = FileResponse(job["out"], filename=job["name"], background=BackgroundTask(shutil.rmtree, job["tmp"], ignore_errors=True))
+    if job.get("preview"):
+        resp.headers["X-Preview"] = job["preview"]
+    if not auth.spend(request, resp):
+        raise HTTPException(402, NO_CREDIT)
+    del _jobs[job_id]
+    return resp
+
+
+@app.get("/processing")
+def processing_page():
+    return FileResponse(os.path.join(STATIC_DIR, "processing.html"))
+
+
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True))

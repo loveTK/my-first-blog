@@ -136,5 +136,13 @@
  "faq.a5": "Non. Les fichiers importés et les résultats sont supprimés immédiatement après le traitement.",
  "footer.credit_pre": "Le modèle de détection des notes a été entraîné sur le jeu de données ",
  "footer.credit_post": " (Tuggener et al., CC BY 4.0).",
- "footer.privacy": "Les fichiers importés et les résultats sont supprimés juste après le traitement."
+ "footer.privacy": "Les fichiers importés et les résultats sont supprimés juste après le traitement.",
+ "tool.status_uploading": "Envoi en cours…",
+ "tool.status_one_file": "Veuillez choisir un seul fichier à la fois.",
+ "processing.title": "Conversion de votre partition…",
+ "processing.sub": "Cela prend généralement environ 10 secondes.",
+ "processing.error_title": "Un problème est survenu",
+ "processing.back": "Retour à Notalo",
+ "processing.ad_label": "Publicité",
+ "credits.free_mode": "Gratuit à utiliser"
 }
