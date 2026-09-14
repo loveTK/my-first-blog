@@ -398,9 +398,7 @@ const applyI18n = () => {
 };
 const detectLang = () => {
   const saved = localStorage.getItem('notalo_lang');
-  if (saved && LANGS[saved]) return saved;
-  const nav = (navigator.language || 'en').slice(0, 2);
-  return LANGS[nav] ? nav : 'en';
+  return (saved && LANGS[saved]) ? saved : 'en';  // 기본은 항상 영어. 브라우저 언어로 자동 전환하지 않음
 };
 let currentLang = 'en';
 const loadLang = async code => {

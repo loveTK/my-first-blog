@@ -66,7 +66,7 @@
  "compare.other_input": "MusicXML",
  "compare.row_prep": "Vorbereitung nötig",
  "compare.notalo_prep": "Keine — Datei einfach wie sie ist hochladen",
- "compare.other_prep": "Erst nach MusicXML exportieren (z. B. mit MuseScore)",
+ "compare.other_prep": "Erst mit einer Notationssoftware nach MusicXML exportieren",
  "compare.row_label": "Beschriftung",
  "compare.notalo_label": "Solmisation + Buchstabennamen, 5 Sprachen",
  "compare.other_label": "Je nach Tool unterschiedlich (meist nur Buchstabennamen)",

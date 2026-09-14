@@ -66,7 +66,7 @@
  "compare.other_input": "MusicXML",
  "compare.row_prep": "Preparazione necessaria",
  "compare.notalo_prep": "Nessuna — carica il file così com'è",
- "compare.other_prep": "Prima esporta in MusicXML (es. con MuseScore)",
+ "compare.other_prep": "Prima esporta in MusicXML con un software di notazione",
  "compare.row_label": "Etichettatura",
  "compare.notalo_label": "Solfeggio + nomi delle lettere, 5 lingue",
  "compare.other_label": "Varia a seconda dello strumento (di solito solo lettere)",
