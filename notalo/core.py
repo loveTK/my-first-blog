@@ -34,9 +34,25 @@ def _line_rows(ink, thr):
             y0 = y
             while y < h and is_line[y]:
                 y += 1
-            lines.append(y0 + int(np.argmax(row_ink[y0:y])))
+            lines += [y0 + k for k in _peaks(row_ink[y0:y])]
         y += 1
     return lines
+
+
+def _peaks(v, min_sep=6):
+    """덩어리 안의 잉크 봉우리들. 번진 스캔에서 이웃한 두 선이 한 덩어리로 붙어도 각각 잡음."""
+    if len(v) < min_sep:
+        return [int(np.argmax(v))]
+    out = []
+    for i in range(len(v)):
+        if v[i] < 0.5 * v.max() or (i > 0 and v[i] < v[i - 1]) or (i + 1 < len(v) and v[i] < v[i + 1]):
+            continue
+        if out and i - out[-1] < min_sep:
+            if v[i] > v[out[-1]]:
+                out[-1] = i
+            continue
+        out.append(i)
+    return out
 
 
 def _make_staff(ink, ys):
