@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://notune.dj4cv7jv9m2w4.cs.amazonlightsail.com/sitemap.xml
+Sitemap: https://notalo.xyz/sitemap.xml
