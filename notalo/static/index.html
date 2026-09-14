@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>Notalo · 악보에 계이름 넣기</title>
-<meta name="description" content="악보를 못 읽어도 시작할 수 있어요. 악보 PDF·JPG·PNG를 올리면 음표마다 계이름을 적어 돌려드립니다.">
-<meta property="og:title" content="Notalo · 악보에 계이름 넣기">
-<meta property="og:description" content="악보를 올리면 음표마다 계이름을 적어 돌려드립니다. 성인 취미 학습자를 위한 도구.">
+<title>Notalo — Add Note Names to Sheet Music Instantly</title>
+<meta name="description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
+<meta property="og:title" content="Notalo — Add Note Names to Sheet Music Instantly">
+<meta property="og:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
+<meta name="twitter:title" content="Notalo — Add Note Names to Sheet Music Instantly">
+<meta name="twitter:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
@@ -20,10 +22,10 @@ html{background:var(--bg);scroll-behavior:smooth}
 body{margin:0;word-break:keep-all;background:var(--bg);color:var(--fg);font:16px/1.65 "IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;padding:0 24px}
 .wrap{max-width:1040px;margin:0 auto}
 a{color:var(--accent-ink)}
-button{font:inherit;cursor:pointer;border-radius:var(--r);border:1px solid transparent;padding:10px 18px;background:none;color:var(--fg);white-space:nowrap}
+button{font:inherit;cursor:pointer;border-radius:999px;border:1px solid transparent;padding:10px 20px;background:none;color:var(--fg);white-space:nowrap}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:default;transform:none}
-.btn-p{background:var(--accent);color:#fff;font-weight:500;padding:13px 24px}
+.btn-p{background:var(--accent);color:#fff;font-weight:500;padding:13px 26px}
 .btn-p:hover{background:var(--accent-ink)}
 .btn-o{border-color:var(--line)}
 .btn-o:hover{border-color:var(--fg)}
@@ -32,16 +34,19 @@ button[disabled]{opacity:.5;cursor:default;transform:none}
 :is(button,a,select,.drop):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* 헤더 */
-header{display:flex;align-items:center;justify-content:space-between;padding:22px 0;gap:16px}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0;gap:16px;flex-wrap:wrap}
 .brand{font-family:"Bricolage Grotesque","Arial Black",sans-serif;font-weight:800;font-size:24px;letter-spacing:-.03em;color:var(--fg);text-decoration:none}
-nav{display:flex;align-items:center;gap:6px}
-#user{font-size:14px;color:var(--muted);margin-right:4px}
+nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.nav-link{padding:8px 12px;font-size:14px;color:var(--muted);text-decoration:none;border-radius:999px}
+.nav-link:hover{color:var(--fg)}
+#user{font-size:14px;color:var(--muted);margin:0 4px}
+#lang-switch{border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--fg);font:inherit;font-size:14px;padding:8px 30px 8px 14px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236E6E66' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;margin-right:4px}
+@media(max-width:820px){.nav-link{display:none}}
 
 /* 히어로 */
-.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:56px 0 64px}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:40px 0 56px}
 .hero h1{font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:44px;line-height:1.25;letter-spacing:-.01em;margin:0 0 20px;text-wrap:pretty}
-.hero .lead{margin:0 0 28px;font-size:17px;max-width:30ch;color:var(--fg);text-wrap:pretty}
-.hero .lead b{font-weight:500}
+.hero .lead{margin:0 0 28px;font-size:17px;max-width:34ch;color:var(--fg);text-wrap:pretty}
 .hero .cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .hero .fmt{font-size:14px;color:var(--muted)}
 .hero figure{margin:0;transform:rotate(1.5deg)}
@@ -50,14 +55,36 @@ nav{display:flex;align-items:center;gap:6px}
 @media(max-width:760px){
   body{padding:0 18px}
   header{padding:16px 0}
-  .btn-g{display:none}
-  .hero{grid-template-columns:1fr;gap:36px;padding:28px 0 48px}
+  .hero{grid-template-columns:1fr;gap:36px;padding:24px 0 40px}
   .hero h1{font-size:32px}
   .hero figure{transform:none}
+  button{white-space:normal}
 }
 
+/* 섹션 공통 */
+section.pad{margin-top:64px;border-top:1px solid var(--line);padding-top:44px}
+.sec-title{font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:28px;margin:0 0 8px}
+.sec-sub{margin:0 0 32px;color:var(--muted);max-width:56ch}
+
+/* 데모 */
+.demo-grid{display:grid;grid-template-columns:1.3fr .7fr;gap:32px;align-items:center}
+.demo-frame{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;overflow:hidden}
+.demo-frame img{width:100%;display:block}
+.demo-opts{display:flex;flex-direction:column;gap:18px}
+.demo-opts .field label{margin-bottom:6px}
+.demo-cta{margin-top:28px;text-align:center}
+@media(max-width:760px){.demo-grid{grid-template-columns:1fr}}
+
+/* 이용방법 */
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.how-step{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:22px 20px}
+.how-num{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;background:var(--accent);color:#fff;font-weight:700;font-size:14px;margin-bottom:14px}
+.how-step h3{margin:0 0 6px;font-size:17px;font-weight:500}
+.how-step p{margin:0;color:var(--muted);font-size:14px}
+@media(max-width:700px){.how-grid{grid-template-columns:1fr}}
+
 /* 업로드 */
-.tool{border-top:1px solid var(--line);padding:48px 0 8px}
+.tool{padding-bottom:8px}
 .drop{border:1.5px dashed var(--line);border-radius:var(--r);padding:48px 20px;text-align:center;cursor:pointer;background:var(--panel);transition:border-color .15s,background .15s}
 .drop:hover,.drop.over{border-color:var(--accent)}
 .drop.has{border-style:solid;border-color:var(--accent)}
@@ -76,7 +103,7 @@ select:hover{border-color:var(--fg)}
 .act{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .credits{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .credits.out{color:var(--fg)}
-.btn-s{padding:7px 12px;font-size:14px}
+.btn-s{padding:7px 14px;font-size:14px}
 .status{margin:14px 0 0;font-size:14px;min-height:22px}
 .status.err{color:var(--err)}
 
@@ -90,31 +117,47 @@ select:hover{border-color:var(--fg)}
 @keyframes sh{to{background-position:-200% 0}}
 .dl{display:inline-block;margin-top:20px;text-decoration:none}
 
+/* 비교 */
+.cmp-table{width:100%;border-collapse:collapse;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.cmp-table th,.cmp-table td{text-align:left;padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp-table th{color:var(--muted);font-weight:500;font-size:13px}
+.cmp-table td:first-child{color:var(--muted);white-space:nowrap;width:1%}
+.cmp-table tr:last-child td{border-bottom:none}
+.cmp-table thead th:nth-child(2){color:var(--accent-ink);font-weight:700}
+.cmp-wrap{overflow-x:auto}
+.cmp-concl{margin:22px 0 0;max-width:70ch;color:var(--fg)}
+.cmp-cta{margin-top:18px}
+
 /* 요금제 */
-.pricing{margin-top:80px;border-top:1px solid var(--line);padding-top:48px}
-.pricing h2{font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:28px;margin:0 0 8px}
-.pricing .sub{margin:0 0 32px;color:var(--muted);max-width:44ch}
 .plans{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 @media(max-width:900px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.plans{grid-template-columns:1fr}}
 .plan{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px 22px 22px;display:flex;flex-direction:column;gap:6px}
 .plan.rec{border-color:var(--accent);border-width:1.5px}
-.plan .badge{position:absolute;top:-11px;left:20px;background:var(--accent);color:#fff;font-size:12px;font-weight:500;padding:2px 10px;border-radius:999px}
+.plan .badge{position:absolute;top:-11px;left:20px;background:var(--accent);color:#fff;font-size:12px;font-weight:500;padding:2px 12px;border-radius:999px}
 .plan .name{font-weight:500}
 .plan .count{font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:30px;line-height:1.2;margin-top:4px}
 .plan .count small{font-family:"IBM Plex Sans KR",sans-serif;font-weight:400;font-size:15px;color:var(--muted);margin-left:2px}
 .plan .price{font-size:17px}
-.plan .price small{font-size:13px;color:var(--muted);margin-left:2px}
 .pricing .note{margin:14px 0 0;font-size:13px;color:var(--muted)}
 .plan .unit{font-size:13px;color:var(--muted)}
 .plan .who{font-size:14px;color:var(--muted);margin-top:4px;flex:1}
 .plan button{margin-top:14px;width:100%}
 
-/* 로그인 모달 */
+/* FAQ */
+.faq-item{border-bottom:1px solid var(--line);padding:18px 0}
+.faq-item:first-child{border-top:1px solid var(--line)}
+.faq-item summary{cursor:pointer;font-weight:500;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:"+";font-size:20px;color:var(--muted);flex:none}
+.faq-item[open] summary::after{content:"–"}
+.faq-item p{margin:12px 0 0;color:var(--muted);font-size:15px}
+
+/* 로그인/결제 모달 */
 dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);color:var(--fg);padding:32px 28px 28px;width:min(400px,calc(100vw - 32px));box-shadow:0 20px 60px rgba(27,27,24,.18)}
 dialog::backdrop{background:rgba(27,27,24,.45)}
 dialog h2{font-family:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:700;font-size:24px;margin:0 0 20px}
-.x{position:absolute;top:10px;right:10px;padding:6px 10px;color:var(--muted);font-size:20px;line-height:1}
+.x{position:absolute;top:10px;right:10px;padding:6px 10px;color:var(--muted);font-size:20px;line-height:1;border-radius:999px}
 .google{width:100%;border-color:var(--line);display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;font-weight:500}
 .google:hover{border-color:var(--fg)}
 .or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:13px;margin:18px 0}
@@ -138,129 +181,194 @@ footer a{color:inherit}
 <header>
   <a class="brand" href="/">Notalo</a>
   <nav>
-    <button class="btn-g" id="pricing-btn" type="button">요금제 보기</button>
+    <a class="nav-link" href="#how" data-i18n="nav.how">How it works</a>
+    <a class="nav-link" href="#demo" data-i18n="nav.demo">Demo</a>
+    <a class="nav-link" href="#compare" data-i18n="nav.compare">Compare</a>
+    <a class="nav-link" href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    <select id="lang-switch" aria-label="Language"></select>
     <span id="user" hidden></span>
-    <button class="btn-o" id="login-btn" type="button">로그인</button>
-    <button class="btn-o" id="logout-btn" type="button" hidden>로그아웃</button>
+    <button class="btn-o" id="login-btn" type="button" data-i18n="nav.signin">Sign in</button>
+    <button class="btn-o" id="logout-btn" type="button" hidden data-i18n="nav.signout">Sign out</button>
   </nav>
 </header>
 
 <section class="hero">
   <div>
-    <h1>악보를 못 읽어도,<br>오늘부터 칠 수 있어요.</h1>
-    <p class="lead"><b>피아노를 다시 시작한 어른, 취미로 배우는 분</b>을 위해 만들었어요. 악보를 올리면 음표마다 계이름을 적어 돌려드립니다.</p>
+    <h1 data-i18n="hero.h1">Add note names to any sheet music — just upload a photo or PDF.</h1>
+    <p class="lead" data-i18n="hero.sub">No MusicXML. No software. Works with a picture from your phone.</p>
     <div class="cta">
-      <button class="btn-p" id="hero-go" type="button">악보 올리기</button>
-      <span class="fmt">PDF · JPG · PNG, 파일은 처리 직후 삭제됩니다.</span>
+      <button class="btn-p" id="hero-go" type="button" data-i18n="hero.cta">Try it free</button>
+      <span class="fmt" data-i18n="hero.fmt">PDF · JPG · PNG. Files are deleted right after processing.</span>
     </div>
   </div>
   <figure>
-    <img src="sample.jpg" alt="계이름이 빨간색(오른손)과 파란색(왼손)으로 적힌 피아노 악보 일부" width="780" height="280">
-    <figcaption>실제 변환 결과. 오른손은 빨강, 왼손은 파랑.</figcaption>
+    <img src="sample.jpg" alt="Sheet music with note names added in red (right hand) and blue (left hand)" width="780" height="280">
+    <figcaption data-i18n="hero.caption">Actual result. Right hand in red, left hand in blue.</figcaption>
   </figure>
 </section>
 
-<main class="tool" id="tool">
+<section class="pad" id="demo">
+  <h2 class="sec-title" data-i18n="demo.title">See it in action</h2>
+  <p class="sec-sub" data-i18n="demo.sub">No upload needed yet — change the options below and watch the sample update.</p>
+  <div class="demo-grid">
+    <div class="demo-frame"><img id="demo-img" src="/demo/sample_en_below.png" alt="Sample sheet music with solfège labels added below each note"></div>
+    <div class="demo-opts">
+      <div class="field"><label for="demo-lang" data-i18n="demo.lang_label">Label language</label>
+        <select id="demo-lang">
+          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option>
+          <option value="en" selected data-i18n="tool.lang_en">Letter names (C D E)</option>
+          <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option>
+          <option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option>
+          <option value="de" data-i18n="tool.lang_de">Letter names, German (C D E H)</option>
+        </select></div>
+      <div class="field"><label for="demo-pos" data-i18n="demo.pos_label">Label position</label>
+        <select id="demo-pos">
+          <option value="below" selected data-i18n="demo.pos_below">Below note</option>
+          <option value="above" data-i18n="demo.pos_above">Above note</option>
+        </select></div>
+    </div>
+  </div>
+  <p class="demo-cta"><button class="btn-p" id="demo-go" type="button" data-i18n="demo.cta">Try it with your own sheet music ↓</button></p>
+</section>
+
+<section class="pad" id="how">
+  <h2 class="sec-title" data-i18n="how.title">How it works</h2>
+  <div class="how-grid">
+    <div class="how-step"><span class="how-num">1</span><h3 data-i18n="how.step1_title">Upload</h3><p data-i18n="how.step1_desc">Drop a photo or PDF of your sheet music. No account needed for your first try.</p></div>
+    <div class="how-step"><span class="how-num">2</span><h3 data-i18n="how.step2_title">Choose your labels</h3><p data-i18n="how.step2_desc">Pick a language and where labels appear — above or below each note.</p></div>
+    <div class="how-step"><span class="how-num">3</span><h3 data-i18n="how.step3_title">Download</h3><p data-i18n="how.step3_desc">Get your labeled sheet music in seconds, ready to print or practice with.</p></div>
+  </div>
+</section>
+
+<main class="tool pad" id="tool">
   <form id="f">
-    <div class="drop" id="drop" tabindex="0" role="button" aria-label="악보 파일 선택">
-      <strong>악보 파일을 여기에 끌어다 놓거나 클릭</strong>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose sheet music file">
+      <strong data-i18n="tool.drop_strong">Drop your sheet music here or click to browse</strong>
       <p class="file" id="fname"></p>
-      <span class="hint">PDF, JPG, PNG · 20MB까지</span>
-      <span class="sw">클릭해서 다른 파일로 바꾸기</span>
+      <span class="hint" data-i18n="tool.drop_hint">PDF, JPG, PNG · up to 20MB</span>
+      <span class="sw" data-i18n="tool.drop_sw">Click to choose a different file</span>
       <input type="file" name="file" id="file" accept=".pdf,.jpg,.jpeg,.png" required>
     </div>
 
     <div class="opts">
-      <div><label for="lang">계이름 표기</label>
+      <div><label for="lang" data-i18n="tool.lang_label">Label language</label>
         <select name="lang" id="lang">
-          <option value="ko">도레미 (한국어)</option><option value="en">C D E (영어)</option>
-          <option value="it">Do Re Mi (이탈리아어)</option><option value="ja">ドレミ (일본어)</option><option value="de">C D E H (독일어)</option>
+          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option><option value="en" data-i18n="tool.lang_en">Letter names (C D E)</option>
+          <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option><option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option><option value="de" data-i18n="tool.lang_de">Letter names, German (C D E H)</option>
         </select></div>
-      <div><label for="position">라벨 위치</label>
-        <select name="position" id="position"><option value="below">음표 아래</option><option value="above">음표 위</option></select></div>
-      <div><label for="mode">배치 방식</label>
-        <select name="mode" id="mode"><option value="greedy">겹침 피해 배치</option><option value="lane">줄 맞춰 배치</option><option value="overlay">음표 위에 덮기</option></select></div>
+      <div><label for="position" data-i18n="tool.pos_label">Label position</label>
+        <select name="position" id="position"><option value="below" data-i18n="demo.pos_below">Below note</option><option value="above" data-i18n="demo.pos_above">Above note</option></select></div>
+      <div><label for="mode" data-i18n="tool.mode_label">Layout</label>
+        <select name="mode" id="mode"><option value="greedy" data-i18n="tool.mode_greedy">Avoid overlaps</option><option value="lane" data-i18n="tool.mode_lane">Align in rows</option><option value="overlay" data-i18n="tool.mode_overlay">Overlay on notehead</option></select></div>
     </div>
 
     <div class="act">
-      <button class="btn-p" id="go">계이름 넣기</button>
+      <button class="btn-p" id="go" data-i18n="tool.go">Add note names</button>
       <p class="credits" id="credits"></p>
     </div>
     <p class="status" id="s"></p>
   </form>
 
   <section class="result" id="result" hidden>
-    <h2>변환 결과</h2>
-    <p class="note" id="pdfnote" hidden>첫 페이지만 미리 보여드려요. 나머지 페이지는 내려받은 파일에 들어 있습니다.</p>
+    <h2 data-i18n="result.title">Result</h2>
+    <p class="note" id="pdfnote" hidden data-i18n="result.pdfnote">Showing the first page only — the rest are in the downloaded file.</p>
     <div class="skel" id="skel" hidden></div>
-    <img id="img" hidden alt="계이름이 적힌 악보 미리보기">
-    <a id="dl" class="dl btn-p" hidden>결과 파일 내려받기</a>
+    <img id="img" hidden alt="Preview of sheet music with note names added">
+    <a id="dl" class="dl btn-p" hidden data-i18n="result.dl">Download result</a>
   </section>
 </main>
 
-<section class="pricing" id="pricing">
-  <h2>요금제</h2>
-  <p class="sub">가입 없이 1회, 가입하고 이메일 인증하면 2회 더. 더 필요하면 횟수만큼만 사세요. 구독이 아니라 사용한 만큼만 냅니다.</p>
+<section class="pad" id="compare">
+  <h2 class="sec-title" data-i18n="compare.title">Notalo vs. MusicXML-Based Tools — Two Ways to Add Note Names</h2>
+  <p class="sec-sub" data-i18n="compare.intro">Most note-naming tools require a MusicXML file to start. Notalo works directly from a photo or PDF. Here's how the two approaches compare.</p>
+  <div class="cmp-wrap">
+  <table class="cmp-table">
+    <thead><tr><th></th><th data-i18n="compare.col_notalo">Notalo</th><th data-i18n="compare.col_other">MusicXML-based tools</th></tr></thead>
+    <tbody>
+      <tr><td data-i18n="compare.row_input">Input format</td><td data-i18n="compare.notalo_input">PDF, JPG, PNG</td><td data-i18n="compare.other_input">MusicXML</td></tr>
+      <tr><td data-i18n="compare.row_prep">Prep needed</td><td data-i18n="compare.notalo_prep">None — upload the file as-is</td><td data-i18n="compare.other_prep">Export to MusicXML first (e.g. via MuseScore)</td></tr>
+      <tr><td data-i18n="compare.row_label">Labeling</td><td data-i18n="compare.notalo_label">Solfège + letter names, 5 languages</td><td data-i18n="compare.other_label">Varies by tool (usually letter names)</td></tr>
+      <tr><td data-i18n="compare.row_free">Free usage</td><td data-i18n="compare.notalo_free">1 use without signup + 2 more after signup</td><td data-i18n="compare.other_free">Varies (often limited by saved-score count)</td></tr>
+      <tr><td data-i18n="compare.row_save">Save/share</td><td data-i18n="compare.notalo_save">Not applicable — files deleted after processing</td><td data-i18n="compare.other_save">Some tools offer score libraries and sharing</td></tr>
+      <tr><td data-i18n="compare.row_best">Best for</td><td data-i18n="compare.notalo_best">Sheet music you only have as a photo, scan, or print</td><td data-i18n="compare.other_best">Musicians already working in MusicXML</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cmp-concl" data-i18n="compare.conclusion">If your sheet music exists only as a photo, a PDF, or a printed page, Notalo skips the file-conversion step entirely. If you already work in MusicXML and want a score library with sharing, a MusicXML-based tool may fit better.</p>
+  <p class="cmp-cta"><button class="btn-p" id="compare-go" type="button" data-i18n="compare.cta">See which approach fits your workflow — try Notalo free →</button></p>
+</section>
+
+<section class="pad" id="pricing">
+  <h2 class="sec-title" data-i18n="pricing.title">Pricing</h2>
+  <p class="sec-sub" data-i18n="pricing.sub">One free try, no signup. Verify your email and get 2 more. Need more? Buy only what you use — no subscription.</p>
   <div class="plans">
     <div class="plan">
-      <div class="name">무료</div>
-      <div class="count">1<small>회</small></div>
-      <div class="price">0원</div>
-      <div class="unit">가입하면 +2회</div>
-      <div class="who">먼저 한 곡 해보고 싶을 때</div>
-      <button class="btn-o" type="button" id="plan-free">무료로 시작하기</button>
+      <div class="name" data-i18n="plan.free.name">Free</div>
+      <div class="count">1<small>×</small></div>
+      <div class="price">$0</div>
+      <div class="unit" data-i18n="plan.unit_after_signup">+2 after signup</div>
+      <div class="who" data-i18n="plan.free.who">Try it on one piece first</div>
+      <button class="btn-o" type="button" id="plan-free" data-i18n="plan.free.cta">Start free</button>
     </div>
     <div class="plan">
-      <div class="name">스타터</div>
-      <div class="count">5<small>회</small></div>
-      <div class="price">US$7.49 <small>≈ 9,900원</small></div>
-      <div class="unit">1회당 약 1,980원</div>
-      <div class="who">이번 달 연습곡 몇 곡</div>
-      <button class="btn-p buy" type="button" data-plan="starter" disabled>준비 중</button>
+      <div class="name" data-i18n="plan.starter.name">Starter</div>
+      <div class="count">5<small>×</small></div>
+      <div class="price">US$7.49</div>
+      <div class="who" data-i18n="plan.starter.who">A few practice pieces this month</div>
+      <button class="btn-p buy" type="button" data-plan="starter" disabled>…</button>
     </div>
     <div class="plan rec">
-      <span class="badge">추천</span>
-      <div class="name">스탠다드</div>
-      <div class="count">30<small>회</small></div>
-      <div class="price">US$29 <small>≈ 39,000원</small></div>
-      <div class="unit">1회당 약 1,300원</div>
-      <div class="who">꾸준히 배우는 분께 가장 알맞아요</div>
-      <button class="btn-p buy" type="button" data-plan="standard" disabled>준비 중</button>
+      <span class="badge" data-i18n="plan.badge">Recommended</span>
+      <div class="name" data-i18n="plan.standard.name">Standard</div>
+      <div class="count">30<small>×</small></div>
+      <div class="price">US$29</div>
+      <div class="who" data-i18n="plan.standard.who">Best for steady, regular learners</div>
+      <button class="btn-p buy" type="button" data-plan="standard" disabled>…</button>
     </div>
     <div class="plan">
-      <div class="name">프로</div>
-      <div class="count">100<small>회</small></div>
-      <div class="price">US$74 <small>≈ 99,000원</small></div>
-      <div class="unit">1회당 약 990원</div>
-      <div class="who">강사용. 학생 악보를 한꺼번에</div>
-      <button class="btn-p buy" type="button" data-plan="pro" disabled>준비 중</button>
+      <div class="name" data-i18n="plan.pro.name">Pro</div>
+      <div class="count">100<small>×</small></div>
+      <div class="price">US$74</div>
+      <div class="who" data-i18n="plan.pro.who">For teachers — a whole class at once</div>
+      <button class="btn-p buy" type="button" data-plan="pro" disabled>…</button>
     </div>
   </div>
-  <p class="note">결제는 PayPal(달러)로 처리되며, 원화 금액은 환율에 따라 조금 달라질 수 있어요. 충전한 횟수는 계정에 남고 기한이 없습니다.</p>
+  <p class="note" data-i18n="pricing.note">Payments are processed in USD via PayPal. Purchased credits stay on your account with no expiration.</p>
+</section>
+
+<section class="pad" id="faq">
+  <h2 class="sec-title" data-i18n="faq.title">FAQ</h2>
+  <div>
+    <details class="faq-item"><summary data-i18n="faq.q1">What file formats are supported?</summary><p data-i18n="faq.a1">PDF, JPG, and PNG — sheet music files up to 20MB.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q2">Do I need MusicXML or notation software?</summary><p data-i18n="faq.a2">No. Just upload a photo or PDF of your sheet music as-is — Notalo detects noteheads directly from the image.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q3">Is it free?</summary><p data-i18n="faq.a3">Yes — one free try without signing up, plus 2 more after verifying your email. After that, credits are available at low one-time prices, no subscription.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q4">What note-name languages are supported?</summary><p data-i18n="faq.a4">Korean (도레미), English (C D E), Italian (Do Re Mi), Japanese (ドレミ), and German (C D E H).</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q5">Are my files stored?</summary><p data-i18n="faq.a5">No. Uploaded files and results are deleted immediately after processing.</p></details>
+  </div>
 </section>
 
 <dialog id="pay" aria-labelledby="pay-title">
-  <button class="x" type="button" id="pay-x" aria-label="닫기">&times;</button>
-  <h2 id="pay-title">결제</h2>
+  <button class="x" type="button" id="pay-x" aria-label="Close">&times;</button>
+  <h2 id="pay-title"></h2>
   <p class="tip" id="pay-desc"></p>
   <div id="pp"></div>
   <p class="msg" id="pay-msg" aria-live="polite"></p>
 </dialog>
 
 <dialog id="login" aria-labelledby="login-title">
-  <button class="x" type="button" id="login-x" aria-label="닫기">&times;</button>
-  <h2 id="login-title">로그인</h2>
+  <button class="x" type="button" id="login-x" aria-label="Close">&times;</button>
+  <h2 id="login-title">Sign in</h2>
   <div id="gsi"></div>
   <button class="google" type="button" id="google-btn">
     <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-    Google로 계속하기
+    <span data-i18n="login.google_btn">Continue with Google</span>
   </button>
-  <p class="or">또는 이메일로</p>
+  <p class="or" data-i18n="login.or">or with email</p>
   <form id="login-form">
-    <div class="field" id="email-field"><label for="email">이메일</label><input type="email" id="email" name="email" autocomplete="email" required></div>
-    <div class="field" id="pw-field"><label for="pw" id="pw-label">비밀번호</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
-    <button class="btn-p" type="submit" id="login-submit">로그인</button>
-    <p class="tip" id="signup-tip" hidden>가입하면 인증 메일을 보내드려요. 메일의 링크를 누르면 가입이 끝납니다.</p>
+    <div class="field" id="email-field"><label for="email" data-i18n="login.email_label">Email</label><input type="email" id="email" name="email" autocomplete="email" required></div>
+    <div class="field" id="pw-field"><label for="pw" id="pw-label" data-i18n="login.pw_label">Password</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
+    <button class="btn-p" type="submit" id="login-submit" data-i18n="login.btn_login">Sign in</button>
+    <p class="tip" id="signup-tip" hidden data-i18n="login.signup_tip">We'll email you a verification link to finish signing up.</p>
     <p class="msg" id="login-msg" aria-live="polite"></p>
   </form>
   <p class="swap" id="swap"></p>
@@ -269,18 +377,51 @@ footer a{color:inherit}
 <footer>
   <span class="brand">Notalo</span>
   <div>
-    <p>음표 인식 모델은 <a href="https://zenodo.org/records/4012193" rel="noopener">DeepScoresV2</a> 데이터셋(Tuggener et al., CC BY 4.0)으로 학습했습니다.</p>
-    <p>업로드한 파일과 결과는 처리 직후 삭제됩니다.</p>
+    <p><span data-i18n="footer.credit_pre">The note-detection model was trained on the </span><a href="https://zenodo.org/records/4012193" rel="noopener">DeepScoresV2</a><span data-i18n="footer.credit_post"> dataset (Tuggener et al., CC BY 4.0).</span></p>
+    <p data-i18n="footer.privacy">Uploaded files and results are deleted right after processing.</p>
   </div>
 </footer>
 </div>
 <script>
 const $ = id => document.getElementById(id);
-const drop = $('drop'), file = $('file'), fname = $('fname'), s = $('s'), go = $('go');
 const show = (el, on) => { el.hidden = !on; };
+
+// ---------- i18n ----------
+const LANGS = { en:"English", ko:"한국어", es:"Español", ja:"日本語", de:"Deutsch", it:"Italiano", fr:"Français", pt:"Português" };
+let T = {};
+const t = (k, vars) => { let s = T[k] || k; if (vars) for (const key in vars) s = s.split(`{${key}}`).join(vars[key]); return s; };
+const applyI18n = () => {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const html = T[el.dataset.i18n] || '';
+    if (html.includes('<a ')) el.innerHTML = html; else el.textContent = html;
+  });
+};
+const detectLang = () => {
+  const saved = localStorage.getItem('notalo_lang');
+  if (saved && LANGS[saved]) return saved;
+  const nav = (navigator.language || 'en').slice(0, 2);
+  return LANGS[nav] ? nav : 'en';
+};
+let currentLang = 'en';
+const loadLang = async code => {
+  const r = await fetch(`/i18n/${code}.json`);
+  T = await r.json();
+  currentLang = code;
+  document.documentElement.lang = code;
+  applyI18n();
+  refreshDynamicText();
+};
+const sw = $('lang-switch');
+Object.entries(LANGS).forEach(([code, label]) => { const o = document.createElement('option'); o.value = code; o.textContent = label; sw.append(o); });
+sw.onchange = () => { localStorage.setItem('notalo_lang', sw.value); loadLang(sw.value); };
+
+// ---------- 업로드 ----------
+const drop = $('drop'), file = $('file'), fname = $('fname'), s = $('s'), go = $('go');
 const pick = f => { if (f) { file.files = f; } const n = file.files[0]?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n); };
 drop.onclick = () => file.click();
 $('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
+$('demo-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
+$('compare-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
 drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } };
 file.onchange = () => pick();
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
@@ -289,50 +430,53 @@ drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.d
 const openPricing = () => $('pricing').scrollIntoView({ block: 'start' });
 const api = async (path, body) => {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) { let d = '실패했습니다.'; try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
+  if (!r.ok) { let d = t('tool.status_fail'); try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
   return r.status === 204 ? null : r.json();
 };
 const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
-$('pricing-btn').onclick = openPricing;
 $('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
 
-// 로그인
+// ---------- 데모 섹션 (미리 생성된 정적 이미지 교체) ----------
+const demoImg = $('demo-img'), demoLang = $('demo-lang'), demoPos = $('demo-pos');
+const updateDemo = () => { demoImg.src = `/demo/sample_${demoLang.value}_${demoPos.value}.png`; };
+demoLang.onchange = updateDemo; demoPos.onchange = updateDemo;
+
+// ---------- 로그인 ----------
 const login = $('login'), msg = $('login-msg');
 const openLogin = asSignup => { setMode(asSignup ? 'signup' : 'login'); login.showModal(); };
 let mode = 'login', resetToken = '';
-const MODES = {
-  login:  { title: '로그인', btn: '로그인', email: true, pw: true, pwLabel: '비밀번호', swap: '계정이 없나요? <a data-m="signup">회원가입</a> · <a data-m="forgot">비밀번호를 잊으셨나요?</a>' },
-  signup: { title: '회원가입', btn: '인증 메일 받고 가입하기', email: true, pw: true, pwLabel: '비밀번호', swap: '이미 계정이 있나요? <a data-m="login">로그인</a>' },
-  forgot: { title: '비밀번호 재설정', btn: '재설정 메일 보내기', email: true, pw: false, swap: '<a data-m="login">로그인으로 돌아가기</a>' },
-  reset:  { title: '새 비밀번호', btn: '비밀번호 바꾸기', email: false, pw: true, pwLabel: '새 비밀번호 (8자 이상)', swap: '' },
+const MODE_KEYS = {
+  login:  { title: 'login.title_login', btn: 'login.btn_login', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_login' },
+  signup: { title: 'login.title_signup', btn: 'login.btn_signup', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_signup' },
+  forgot: { title: 'login.title_forgot', btn: 'login.btn_forgot', email: true, pw: false, swap: 'login.swap_forgot' },
+  reset:  { title: 'login.title_reset', btn: 'login.btn_reset', email: false, pw: true, pwLabel: 'login.pw_label_reset', swap: '' },
 };
-const setMode = m => { mode = m; const c = MODES[m];
-  $('login-title').textContent = c.title; $('login-submit').textContent = c.btn; msg.textContent = '';
+const setMode = m => { mode = m; const c = MODE_KEYS[m];
+  $('login-title').textContent = t(c.title); $('login-submit').textContent = t(c.btn); msg.textContent = '';
   show($('email-field'), c.email); show($('pw-field'), c.pw); $('email').required = c.email; $('pw').required = c.pw;
-  if (c.pw) { $('pw-label').textContent = c.pwLabel; $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
+  if (c.pw) { $('pw-label').textContent = t(c.pwLabel); $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
   show($('signup-tip'), m === 'signup'); show($('google-btn'), m !== 'reset' && !$('google-btn').dataset.gsi); show($('gsi'), m !== 'reset'); show(login.querySelector('.or'), m !== 'reset');
-  $('swap').innerHTML = c.swap; show($('swap'), !!c.swap); $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
+  $('swap').innerHTML = c.swap ? t(c.swap) : ''; show($('swap'), !!c.swap); $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
 $('login-btn').onclick = () => openLogin(false);
 $('login-x').onclick = () => login.close();
 login.onclick = e => { if (e.target === login) login.close(); };
 $('logout-btn').onclick = async () => { await api('/logout', {}); credits(); };
-$('google-btn').onclick = () => { msg.textContent = 'Google 로그인은 준비 중입니다.'; };
 $('login-form').onsubmit = async e => {
   e.preventDefault(); msg.textContent = '';
   const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
   btn.disabled = true;
   try {
-    if (mode === 'signup') { await api('/signup', body); msg.textContent = `인증 메일을 보냈어요. ${body.email} 메일함을 확인해 주세요.`; credits(); }
-    else if (mode === 'forgot') { await api('/forgot', body); msg.textContent = `가입된 이메일이면 재설정 링크를 보냈어요. ${body.email} 메일함을 확인해 주세요.`; }
-    else if (mode === 'reset') { await api('/reset', { token: resetToken, password: body.password }); login.close(); s.textContent = '비밀번호를 바꿨어요. 로그인되었습니다.'; credits(); }
+    if (mode === 'signup') { await api('/signup', body); msg.textContent = t('login.signup_sent', { email: body.email }); credits(); }
+    else if (mode === 'forgot') { await api('/forgot', body); msg.textContent = t('login.forgot_sent', { email: body.email }); }
+    else if (mode === 'reset') { await api('/reset', { token: resetToken, password: body.password }); login.close(); s.textContent = t('login.reset_done'); credits(); }
     else { await api('/login', body); login.close(); credits(); }
   } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
 };
-setMode('login');
+let pendingVerified = false;
 (async () => {
   try {
     const q = new URLSearchParams(location.search);
-    if (q.get('verified')) { history.replaceState(null, '', '/'); s.textContent = '이메일 인증이 끝났어요. 무료 2회가 지급됐습니다.'; }
+    if (q.get('verified')) { history.replaceState(null, '', '/'); pendingVerified = true; }
     if (q.get('reset')) { resetToken = q.get('reset'); history.replaceState(null, '', '/'); setMode('reset'); login.showModal(); $('pw').focus(); }
     const { google_client_id } = await (await fetch('/auth/config')).json();
     if (!google_client_id) return;
@@ -340,77 +484,95 @@ setMode('login');
     sc.onload = () => {
       google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
         try { await api('/login/google', { credential }); login.close(); credits(); } catch (err) { msg.textContent = err.message; } } });
-      google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ko', width: 344 });
+      google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: currentLang, width: 344 });
       show($('google-btn'), false); $('google-btn').dataset.gsi = '1';
     };
     document.head.append(sc);
   } catch (_) {}
 })();
-const showCredits = ({ left, user, verified }) => {
+let lastCreditsData = null;
+const showCredits = data => {
+  lastCreditsData = data;
+  const { left, user, verified } = data;
   const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out'); c.textContent = '';
   const btn = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-o btn-s'; b.textContent = label; b.onclick = fn; c.append(b); };
   if (!user) {
-    if (left > 0) c.textContent = `무료 체험 ${left}회 남음 · 가입하면 2회 더 드려요`;
-    else { c.textContent = '무료 체험을 사용했어요. 가입하면 2회 더 드려요'; btn('가입하기', () => openLogin(true)); }
+    if (left > 0) c.textContent = t('credits.guest_left', { n: left });
+    else { c.textContent = t('credits.guest_out'); btn(t('credits.signup_btn'), () => openLogin(true)); }
   } else if (!verified) {
-    c.textContent = left > 0 ? `남은 크레딧 ${left}회 · 이메일 인증하면 2회 더 드려요` : '이메일 인증을 완료하면 2회가 지급돼요';
-    btn('인증 메일 다시 보내기', async e => { e.target.disabled = true; try { await api('/resend', { email: user }); e.target.textContent = '보냈어요'; } catch (err) { e.target.textContent = err.message; } });
-  } else if (left > 0) c.textContent = `남은 크레딧 ${left}회`;
-  else { c.textContent = '크레딧을 모두 사용했어요'; btn('요금제 보기', openPricing); }
+    c.textContent = left > 0 ? t('credits.unverified_left', { n: left }) : t('credits.unverified_out');
+    btn(t('credits.resend_btn'), async e => { e.target.disabled = true; try { await api('/resend', { email: user }); e.target.textContent = t('credits.resend_sent'); } catch (err) { e.target.textContent = err.message; } });
+  } else if (left > 0) c.textContent = t('credits.left', { n: left });
+  else { c.textContent = t('credits.out'); btn(t('credits.pricing_btn'), openPricing); }
 };
 let me = null;
-const credits = async () => { try { const d = await (await fetch('/credits')).json(); me = d.user; setUser(d.user); showCredits(d); } catch (_) {} };
-credits();
+const credits = async () => { try { const d = await (await fetch('/credits')).json(); me = d.user; setUser(d.user); showCredits(d); if (pendingVerified) { s.textContent = t('login.verified_msg'); pendingVerified = false; } } catch (_) {} };
 
-// 결제 (PayPal). 서버가 금액을 정하고 확정까지 하므로 프론트는 주문 id만 오간다
+// ---------- 결제 (PayPal). 서버가 금액을 정하고 확정까지 하므로 프론트는 주문 id만 오간다 ----------
 const pay = $('pay'), payMsg = $('pay-msg');
 $('pay-x').onclick = () => pay.close();
 pay.onclick = e => { if (e.target === pay) pay.close(); };
+let payCfg = null;
 (async () => {
   try {
-    const cfg = await (await fetch('/pay/config')).json();
-    if (!cfg.client_id) return;
-    const sc = document.createElement('script'); sc.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.client_id)}&currency=USD&intent=capture&locale=ko_KR&disable-funding=paylater`;
+    payCfg = await (await fetch('/pay/config')).json();
+    if (!payCfg.client_id) return;
+    const sc = document.createElement('script'); sc.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(payCfg.client_id)}&currency=USD&intent=capture&disable-funding=paylater`;
     sc.onload = () => document.querySelectorAll('.buy').forEach(b => {
-      const p = cfg.plans[b.dataset.plan]; b.disabled = false; b.textContent = '구매하기';
+      const p = payCfg.plans[b.dataset.plan]; b.disabled = false; b.textContent = t('pay.buy');
       b.onclick = () => {
-        if (!me) { openLogin(false); msg.textContent = '구매하려면 먼저 로그인하세요.'; return; }
-        $('pay-title').textContent = `${p.name} ${p.credits}회`; $('pay-desc').textContent = `US$${p.usd} · 결제가 끝나면 ${me} 계정에 ${p.credits}회가 바로 충전돼요.`;
+        if (!me) { openLogin(false); msg.textContent = t('pay.login_first'); return; }
+        $('pay-title').textContent = `${p.name} ${p.credits}${t('pay.title_suffix')}`; $('pay-desc').textContent = t('pay.desc', { usd: p.usd, email: me });
         payMsg.textContent = ''; $('pp').innerHTML = ''; pay.showModal();
         paypal.Buttons({
-          style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay' },
+          style: { layout: 'vertical', color: 'black', shape: 'pill', label: 'pay' },
           createOrder: async () => (await api('/pay/order', { plan: b.dataset.plan })).id,
-          onApprove: async d => { const r = await api('/pay/capture', { order_id: d.orderID }); pay.close(); s.className = 'status'; s.textContent = `${r.credited}회가 충전됐어요. 남은 크레딧 ${r.left}회`; credits(); $('tool').scrollIntoView({ block: 'start' }); },
-          onError: err => { payMsg.textContent = (err && err.message) || '결제에 실패했습니다.'; },
+          onApprove: async d => { const r = await api('/pay/capture', { order_id: d.orderID }); pay.close(); s.className = 'status'; s.textContent = t('pay.done', { n: r.credited, left: r.left }); credits(); $('tool').scrollIntoView({ block: 'start' }); },
+          onError: err => { payMsg.textContent = (err && err.message) || t('pay.fail_generic'); },
         }).render('#pp');
       };
     });
-    sc.onerror = () => document.querySelectorAll('.buy').forEach(b => { b.textContent = '결제 모듈 로드 실패'; });  // 보통 Client ID 오타·Live/Sandbox 불일치
+    sc.onerror = () => document.querySelectorAll('.buy').forEach(b => { b.textContent = t('pay.sdk_fail'); });  // 보통 Client ID 오타·Live/Sandbox 불일치
     document.head.append(sc);
   } catch (_) {}
 })();
 
+// 언어 전환 시 이미 렌더된 동적 텍스트(크레딧 표시, 결제 버튼)도 다시 그림
+const refreshDynamicText = () => {
+  if (lastCreditsData) showCredits(lastCreditsData);
+  if (payCfg) document.querySelectorAll('.buy').forEach(b => { if (!b.disabled) b.textContent = t('pay.buy'); });
+};
+
 $('f').onsubmit = async e => {
   e.preventDefault();
-  if (!file.files[0]) { s.className = 'status err'; s.textContent = '먼저 악보 파일을 선택하세요.'; return; }
+  if (!file.files[0]) { s.className = 'status err'; s.textContent = t('tool.status_pick_file'); return; }
   const isPdf = /\.pdf$/i.test(file.files[0].name);
-  go.disabled = true; s.className = 'status'; s.textContent = '음표를 읽는 중입니다. 페이지당 10초쯤 걸립니다.';
+  go.disabled = true; s.className = 'status'; s.textContent = t('tool.status_processing');
   show($('result'), true); show($('skel'), true); show($('img'), false); show($('dl'), false); show($('pdfnote'), false);
   try {
     const r = await fetch('/convert', { method: 'POST', body: new FormData($('f')) });
     if (!r.ok) {
-      let msg = '처리에 실패했습니다.';
-      try { const j = await r.json(); if (j.detail) msg = j.detail; } catch (_) { if (r.status === 500) msg = '이 악보에서 오선을 찾지 못했습니다. 더 선명한 이미지로 다시 시도해 보세요.'; }
-      throw new Error(msg);
+      let m = t('tool.status_fail');
+      try { const j = await r.json(); if (j.detail) m = j.detail; } catch (_) { if (r.status === 500) m = t('tool.status_no_staff'); }
+      throw new Error(m);
     }
     const b = await r.blob(), u = URL.createObjectURL(b);
     const dl = $('dl'); dl.href = u; dl.download = file.files[0].name.replace(/\.(\w+)$/, '_plus.$1');
     show($('skel'), false); show(dl, true); show($('pdfnote'), isPdf);
     $('img').src = isPdf ? r.headers.get('X-Preview') : u; show($('img'), true);
-    s.textContent = '완료'; credits();
+    s.textContent = t('tool.status_done'); credits();
   } catch (err) {
     show($('result'), false); s.className = 'status err'; s.textContent = err.message;
   } finally { go.disabled = false; }
 };
+
+// ---------- 시작 ----------
+(async () => {
+  const lang = detectLang();
+  sw.value = lang;
+  await loadLang(lang);
+  setMode('login');
+  credits();
+})();
 </script>
 </html>
