@@ -23,39 +23,99 @@ def binarize(gray):
     return ink
 
 
-def detect_staves(ink):
-    """오선 → [{"lines":[y*5], "space":float, "x0","x1","mask_x1"}].
-    mask_x1: 음자리표+조표 끝 x (hollow 음표 검출에만 적용할 마스크 경계)."""
+def _line_rows(ink, thr):
+    """임계값 넘는 연속 행 덩어리마다 잉크 최대 행 하나 = 선 후보 (덩어리 중심을 쓰면 옆 글자 행과 붙었을 때 밀림)."""
     h, w = ink.shape
     row_ink = (ink > 0).sum(axis=1)
-    # 페이지 최대 잉크 폭 기준 상대 임계값: 첫 시스템에 악기명이 붙어 오선이 더 짧은 경우 등을 대비.
-    # ponytail: 기울어진 스캔은 못 잡음. 필요시 deskew 추가.
-    is_line = row_ink > max(0.6 * row_ink.max(), 0.2 * w)
-    # 연속 행 → 선 하나(두께 반영해 중앙값 사용)
+    is_line = row_ink > thr
     lines, y = [], 0
     while y < h:
         if is_line[y]:
             y0 = y
             while y < h and is_line[y]:
                 y += 1
-            lines.append((y0 + y - 1) / 2)
+            lines.append(y0 + int(np.argmax(row_ink[y0:y])))
         y += 1
-    # 등간격 5개씩 묶기
+    return lines
+
+
+def _make_staff(ink, ys):
+    """5선 y → staff dict. 5선이 함께 지나는 가로폭이 좁으면(가사·제목 행이 묶인 것) None."""
+    w = ink.shape[1]
+    band = (ink[int(ys[0]) - 1:int(ys[4]) + 2] > 0)
+    cols = np.where(band.sum(axis=0) >= 5)[0]  # 5개 선 다 지나는 열 = 오선 구간
+    if len(cols) == 0 or cols[-1] - cols[0] < 0.3 * w:
+        return None
+    space = (ys[4] - ys[0]) / 4
+    x0, x1 = int(cols[0]), int(cols[-1])
+    clef_x1, mask_x1 = _clef_key_end(ink, ys, space, x0)
+    return {"lines": ys, "space": space, "x0": x0, "x1": x1, "clef_x1": clef_x1, "mask_x1": mask_x1}
+
+
+def _group_strict(ink, lines):
+    """연속 5개 등간격."""
     staves, i = [], 0
     while i + 4 < len(lines):
         gaps = [lines[i + k + 1] - lines[i + k] for k in range(4)]
         if max(gaps) < 1.3 * min(gaps):
-            ys = lines[i:i + 5]
-            space = (ys[4] - ys[0]) / 4
-            band = (ink[int(ys[0]) - 1:int(ys[4]) + 2] > 0)
-            cols = np.where(band.sum(axis=0) >= 5)[0]  # 5개 선 다 지나는 열 = 오선 구간
-            x0, x1 = int(cols[0]), int(cols[-1])
-            clef_x1, mask_x1 = _clef_key_end(ink, ys, space, x0)
-            staves.append({"lines": ys, "space": space, "x0": x0, "x1": x1,
-                           "clef_x1": clef_x1, "mask_x1": mask_x1})
-            i += 5
+            s = _make_staff(ink, lines[i:i + 5])
+            if s:
+                staves.append(s)
+                i += 5
+                continue
+        i += 1
+    return staves
+
+
+def _group_lenient(ink, lines):
+    """등간격 5개를 이어가되, 간격이 0.7g 미만인 끼어든 후보(빔·가사 행)는 건너뜀."""
+    w = ink.shape[1]
+    staves, i = [], 0
+    while i < len(lines):
+        found = None
+        for j in range(i + 1, min(i + 4, len(lines))):
+            g = lines[j] - lines[i]
+            if g < 3 or g > w / 30:
+                continue
+            ys, k = [lines[i], lines[j]], j
+            while len(ys) < 5 and k + 1 < len(lines):
+                k += 1
+                d = lines[k] - ys[-1]
+                if d < 0.7 * g:
+                    continue
+                if d > 1.3 * g:
+                    break
+                ys.append(lines[k])
+            if len(ys) == 5:
+                s = _make_staff(ink, ys)
+                if s:
+                    found = (s, k)
+                    break
+        if found:
+            staves.append(found[0])
+            i = found[1] + 1
         else:
             i += 1
+    return staves
+
+
+def detect_staves(ink):
+    """오선 → [{"lines":[y*5], "space":float, "x0","x1","mask_x1"}].
+    mask_x1: 음자리표+조표 끝 x (hollow 음표 검출에만 적용할 마스크 경계).
+    1) 진한 선 기준(페이지 최대 잉크의 60%)으로 찾고, 2) 옅게 인쇄된 시스템은 낮은 임계값으로 보완.
+    보완 오선은 기존 오선과 세로로 겹치거나 선 간격이 크게 다르면 버림(가짜 방지).
+    ponytail: 기울어진 스캔은 못 잡음. 필요시 deskew 추가."""
+    h, w = ink.shape
+    row_max = (ink > 0).sum(axis=1).max()
+    staves = _group_strict(ink, _line_rows(ink, max(0.6 * row_max, 0.2 * w)))
+    ref = float(np.median([s["space"] for s in staves])) if staves else None
+    for s in _group_lenient(ink, _line_rows(ink, 0.2 * w)):
+        if ref and not 0.7 * ref < s["space"] < 1.3 * ref:
+            continue
+        if any(s["lines"][0] <= t["lines"][4] + t["space"] and t["lines"][0] <= s["lines"][4] + s["space"] for t in staves):
+            continue
+        staves.append(s)
+    staves.sort(key=lambda s: s["lines"][0])
     assert staves, "오선 못 찾음"
     return staves
 
