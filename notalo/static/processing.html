@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-YKTS1ZLM3G"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-YKTS1ZLM3G');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1044528124208901" crossorigin="anonymous"></script>
+<meta name="google-adsense-account" content="ca-pub-1044528124208901">
+<title>Notalo — Converting Your Sheet Music</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+<div class="wrap">
+<header>
+  <a class="brand" href="/">Notalo</a>
+  <nav>
+    <span class="nav-links">
+      <a class="nav-link" href="/#how" data-i18n="nav.how">How it works</a>
+      <a class="nav-link" href="/#demo" data-i18n="nav.demo">Demo</a>
+      <a class="nav-link" href="/#compare" data-i18n="nav.compare">Compare</a>
+      <a class="nav-link" href="/#pricing" data-i18n="nav.pricing">Pricing</a>
+    </span>
+    <select id="lang-switch" aria-label="Language"></select>
+    <span id="user" hidden></span>
+    <button class="btn-o" id="login-btn" type="button" data-i18n="nav.signin">Sign in</button>
+    <button class="btn-o" id="logout-btn" type="button" hidden data-i18n="nav.signout">Sign out</button>
+  </nav>
+</header>
+
+<main class="proc">
+  <div class="ad-slot">
+    <span class="ad-label" data-i18n="processing.ad_label">Advertisement</span>
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1044528124208901" data-ad-slot="TOP_SLOT_ID" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  </div>
+
+  <div id="busy">
+    <div class="spin" aria-hidden="true"></div>
+    <h1 data-i18n="processing.title">Converting your sheet music…</h1>
+    <p class="sub" data-i18n="processing.sub">This usually takes about 10 seconds.</p>
+  </div>
+
+  <div id="err" hidden>
+    <h1 class="err-box" data-i18n="processing.error_title">Something went wrong</h1>
+    <p class="sub" id="err-msg"></p>
+    <a class="btn-p proc-back" href="/" data-i18n="processing.back">Back to Notalo</a>
+  </div>
+
+  <section class="result proc-result" id="result" hidden>
+    <h2 data-i18n="result.title">Result</h2>
+    <p class="note" id="pdfnote" hidden data-i18n="result.pdfnote">Showing the first page only — the rest are in the downloaded file.</p>
+    <img id="img" hidden alt="Preview of sheet music with note names added">
+    <a id="dl" class="dl btn-p" hidden data-i18n="result.dl">Download result</a>
+    <p class="proc-back"><a class="btn-o" href="/" data-i18n="processing.back">Back to Notalo</a></p>
+  </section>
+
+  <div class="ad-slot">
+    <span class="ad-label" data-i18n="processing.ad_label">Advertisement</span>
+    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1044528124208901" data-ad-slot="BOTTOM_SLOT_ID" data-ad-format="auto" data-full-width-responsive="true"></ins>
+  </div>
+</main>
+
+<dialog id="login" aria-labelledby="login-title">
+  <button class="x" type="button" id="login-x" aria-label="Close">&times;</button>
+  <h2 id="login-title">Sign in</h2>
+  <div id="gsi"></div>
+  <button class="google" type="button" id="google-btn">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+    <span data-i18n="login.google_btn">Continue with Google</span>
+  </button>
+  <p class="or" data-i18n="login.or">or with email</p>
+  <form id="login-form">
+    <div class="field" id="email-field"><label for="email" data-i18n="login.email_label">Email</label><input type="email" id="email" name="email" autocomplete="email" required></div>
+    <div class="field" id="pw-field"><label for="pw" id="pw-label" data-i18n="login.pw_label">Password</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
+    <button class="btn-p" type="submit" id="login-submit" data-i18n="login.btn_login">Sign in</button>
+    <p class="tip" id="signup-tip" hidden data-i18n="login.signup_tip">We'll email you a verification link to finish signing up.</p>
+    <p class="msg" id="login-msg" aria-live="polite"></p>
+  </form>
+  <p class="swap" id="swap"></p>
+</dialog>
+
+<footer>
+  <span class="brand">Notalo</span>
+  <div>
+    <p><span data-i18n="footer.credit_pre">The note-detection model was trained on the </span><a href="https://zenodo.org/records/4012193" rel="noopener">DeepScoresV2</a><span data-i18n="footer.credit_post"> dataset (Tuggener et al., CC BY 4.0).</span></p>
+    <p data-i18n="footer.privacy">Uploaded files and results are deleted right after processing.</p>
+  </div>
+</footer>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const show = (el, on) => { el.hidden = !on; };
+
+// ---------- i18n (index.html과 공유하는 로직) ----------
+const LANGS = { en:"English", ko:"한국어", es:"Español", ja:"日本語", de:"Deutsch", it:"Italiano", fr:"Français", pt:"Português" };
+let T = {};
+const t = (k, vars) => { let s = T[k] || k; if (vars) for (const key in vars) s = s.split(`{${key}}`).join(vars[key]); return s; };
+const applyI18n = () => {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const html = T[el.dataset.i18n] || '';
+    if (html.includes('<a ')) el.innerHTML = html; else el.textContent = html;
+  });
+};
+const detectLang = () => {
+  const saved = localStorage.getItem('notalo_lang');
+  return (saved && LANGS[saved]) ? saved : 'en';
+};
+let currentLang = 'en';
+const loadLang = async code => {
+  const r = await fetch(`/i18n/${code}.json`);
+  T = await r.json();
+  currentLang = code;
+  document.documentElement.lang = code;
+  applyI18n();
+};
+const sw = $('lang-switch');
+Object.entries(LANGS).forEach(([code, label]) => { const o = document.createElement('option'); o.value = code; o.textContent = label; sw.append(o); });
+sw.onchange = () => { localStorage.setItem('notalo_lang', sw.value); loadLang(sw.value); };
+
+const api = async (path, body) => {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { let d = t('tool.status_fail'); try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
+  return r.status === 204 ? null : r.json();
+};
+const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
+
+// ---------- 로그인 (헤더에서 접근 가능해야 하므로 최소 기능 유지) ----------
+const login = $('login'), msg = $('login-msg');
+const openLogin = asSignup => { setMode(asSignup ? 'signup' : 'login'); login.showModal(); };
+let mode = 'login', resetToken = '';
+const MODE_KEYS = {
+  login:  { title: 'login.title_login', btn: 'login.btn_login', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_login' },
+  signup: { title: 'login.title_signup', btn: 'login.btn_signup', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_signup' },
+  forgot: { title: 'login.title_forgot', btn: 'login.btn_forgot', email: true, pw: false, swap: 'login.swap_forgot' },
+  reset:  { title: 'login.title_reset', btn: 'login.btn_reset', email: false, pw: true, pwLabel: 'login.pw_label_reset', swap: '' },
+};
+const setMode = m => { mode = m; const c = MODE_KEYS[m];
+  $('login-title').textContent = t(c.title); $('login-submit').textContent = t(c.btn); msg.textContent = '';
+  show($('email-field'), c.email); show($('pw-field'), c.pw); $('email').required = c.email; $('pw').required = c.pw;
+  if (c.pw) { $('pw-label').textContent = t(c.pwLabel); $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
+  show($('signup-tip'), m === 'signup'); show($('google-btn'), m !== 'reset' && !$('google-btn').dataset.gsi); show($('gsi'), m !== 'reset'); show(login.querySelector('.or'), m !== 'reset');
+  $('swap').innerHTML = c.swap ? t(c.swap) : ''; show($('swap'), !!c.swap); $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
+$('login-btn').onclick = () => openLogin(false);
+$('login-x').onclick = () => login.close();
+login.onclick = e => { if (e.target === login) login.close(); };
+$('logout-btn').onclick = async () => { await api('/logout', {}); credits(); };
+$('login-form').onsubmit = async e => {
+  e.preventDefault(); msg.textContent = '';
+  const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
+  btn.disabled = true;
+  try {
+    if (mode === 'signup') { await api('/signup', body); msg.textContent = t('login.signup_sent', { email: body.email }); credits(); }
+    else if (mode === 'forgot') { await api('/forgot', body); msg.textContent = t('login.forgot_sent', { email: body.email }); }
+    else if (mode === 'reset') { await api('/reset', { token: resetToken, password: body.password }); login.close(); credits(); }
+    else { await api('/login', body); login.close(); credits(); }
+  } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
+};
+(async () => {
+  try {
+    const { google_client_id } = await (await fetch('/auth/config')).json();
+    if (!google_client_id) return;
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = () => {
+      google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
+        try { await api('/login/google', { credential }); login.close(); credits(); } catch (err) { msg.textContent = err.message; } } });
+      google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: currentLang, width: 344 });
+      show($('google-btn'), false); $('google-btn').dataset.gsi = '1';
+    };
+    document.head.append(sc);
+  } catch (_) {}
+})();
+const credits = async () => { try { const d = await (await fetch('/credits')).json(); setUser(d.user); } catch (_) {} };
+
+// ---------- job 폴링 ----------
+const jobId = new URLSearchParams(location.search).get('job');
+const showError = msg => { show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
+const poll = async () => {
+  if (!jobId) { showError(t('tool.status_fail')); return; }
+  try {
+    const r = await fetch(`/jobs/${jobId}/status`);
+    if (!r.ok) { showError(t('tool.status_no_staff')); return; }
+    const d = await r.json();
+    if (d.status === 'processing') { setTimeout(poll, 1200); return; }
+    if (d.status === 'error') { showError(d.detail || t('tool.status_no_staff')); return; }
+    // done
+    const rr = await fetch(`/jobs/${jobId}/result`);
+    if (!rr.ok) { showError(t('tool.status_no_staff')); return; }
+    const isPdf = rr.headers.get('Content-Type') === 'application/pdf';
+    const b = await rr.blob(), u = URL.createObjectURL(b);
+    const savedName = localStorage.getItem('notalo_filename') || 'sheet';
+    const dl = $('dl'); dl.href = u; dl.download = savedName.replace(/\.(\w+)$/, '_plus.$1') || 'result';
+    show($('busy'), false); show($('result'), true); show($('pdfnote'), isPdf);
+    $('img').src = isPdf ? rr.headers.get('X-Preview') : u; show($('img'), true); show(dl, true);
+  } catch (_) { showError(t('tool.status_no_staff')); }
+};
+
+// ---------- 시작 ----------
+(async () => {
+  const lang = detectLang();
+  sw.value = lang;
+  await loadLang(lang);
+  setMode('login');
+  credits();
+  poll();
+  (adsbygoogle = window.adsbygoogle || []).push({});
+  (adsbygoogle = window.adsbygoogle || []).push({});
+})();
+</script>
+</html>

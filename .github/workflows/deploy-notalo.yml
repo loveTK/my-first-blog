@@ -1,0 +1,71 @@
+name: deploy notalo to lightsail
+on:
+  push:
+    branches: [claude/playwright-plugin-install-bgpysg]
+    paths: [notalo/**, .github/workflows/deploy-notalo.yml]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - run: |
+          sudo curl -sL https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
+            -o /usr/local/bin/lightsailctl
+          sudo chmod +x /usr/local/bin/lightsailctl
+      - run: docker build -t notalo notalo/
+      - id: push
+        run: |
+          set -euo pipefail
+          aws lightsail push-container-image \
+            --service-name notune --label notune --image notalo \
+            | tee push.log
+          echo "image=$(grep -oP '(?<=Refer to this image as ")[^"]+' push.log)" >> "$GITHUB_OUTPUT"
+      - name: 서버 사양 micro(1GB, $10/월)로 — YOLO ONNX 추론 메모리. 이미 micro면 no-op
+        run: aws lightsail update-container-service --service-name notune --power micro --scale 1
+      - env:  # 시크릿에 줄바꿈/따옴표가 섞여 들어와도 JSON이 깨지지 않게 python으로 생성 (값은 strip)
+          IMAGE: ${{ steps.push.outputs.image }}
+          NOTALO_SECRET: ${{ secrets.NOTALO_SECRET }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_SECRET: ${{ secrets.PAYPAL_SECRET }}
+          PAYPAL_ENV: ${{ secrets.PAYPAL_ENV }}
+          NOTALO_BUCKET: ${{ secrets.NOTALO_BUCKET }}
+          NOTALO_BUCKET_KEY_ID: ${{ secrets.NOTALO_BUCKET_KEY_ID }}
+          NOTALO_BUCKET_KEY_SECRET: ${{ secrets.NOTALO_BUCKET_KEY_SECRET }}
+          AWS_REGION_VALUE: ${{ secrets.AWS_REGION }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          keys = ["NOTALO_SECRET", "SMTP_USER", "SMTP_PASS", "GOOGLE_CLIENT_ID", "PAYPAL_CLIENT_ID", "PAYPAL_SECRET", "NOTALO_BUCKET", "NOTALO_BUCKET_KEY_ID", "NOTALO_BUCKET_KEY_SECRET"]
+          env = {k: os.environ.get(k, "").strip() for k in keys}
+          env["AWS_REGION"] = os.environ["AWS_REGION_VALUE"].strip()  # boto3가 버킷 리전 알아야 함
+          env["PAYPAL_ENV"] = os.environ.get("PAYPAL_ENV", "").strip() or "sandbox"  # 시크릿 PAYPAL_ENV=live 로 바꾸면 실결제
+          print("secrets set:", {k: bool(v) for k, v in env.items()})
+          json.dump({"notune": {"image": os.environ["IMAGE"], "ports": {"8000": "HTTP"}, "environment": env}}, open("deploy.json", "w"))
+          PY
+          aws lightsail create-container-service-deployment \
+            --service-name notune \
+            --containers file://deploy.json \
+            --public-endpoint '{"containerName":"notune","containerPort":8000,"healthCheck":{"path":"/"}}'
+      - name: CDN 배포(전세계 엣지 라우팅, 이미 있으면 건너뜀) — 월 ~$2.50 추가 과금
+        # Distribution API는 리전 무관하게 항상 us-east-1에서만 호출 가능(컨테이너 서비스 자체는 그대로 서울에 남음)
+        run: |
+          if aws lightsail get-distributions --distribution-name notune-cdn --region us-east-1 >/dev/null 2>&1; then
+            echo "notune-cdn 이미 있음, 건너뜀"
+          else
+            aws lightsail create-distribution \
+              --distribution-name notune-cdn \
+              --origin name=notune,regionName=${{ secrets.AWS_REGION }} \
+              --default-cache-behavior behavior=dont-cache \
+              --bundle-id small_1_0 \
+              --region us-east-1
+          fi

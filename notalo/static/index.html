@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-YKTS1ZLM3G"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-YKTS1ZLM3G');
+</script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1044528124208901" crossorigin="anonymous"></script>
+<meta name="google-adsense-account" content="ca-pub-1044528124208901">
+<title>Notalo — Add Note Names to Sheet Music Instantly</title>
+<meta name="description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
+<meta property="og:title" content="Notalo — Add Note Names to Sheet Music Instantly">
+<meta property="og:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
+<meta name="twitter:title" content="Notalo — Add Note Names to Sheet Music Instantly">
+<meta name="twitter:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Free to try.">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="canonical" href="https://notalo.xyz/">
+<meta property="og:url" content="https://notalo.xyz/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+<div class="wrap">
+<header>
+  <a class="brand" href="/">Notalo</a>
+  <nav>
+    <span class="nav-links">
+      <a class="nav-link" href="#how" data-i18n="nav.how">How it works</a>
+      <a class="nav-link" href="#demo" data-i18n="nav.demo">Demo</a>
+      <a class="nav-link" href="#compare" data-i18n="nav.compare">Compare</a>
+      <a class="nav-link" href="#pricing" data-i18n="nav.pricing">Pricing</a>
+    </span>
+    <select id="lang-switch" aria-label="Language"></select>
+    <span id="user" hidden></span>
+    <button class="btn-o" id="login-btn" type="button" data-i18n="nav.signin">Sign in</button>
+    <button class="btn-o" id="logout-btn" type="button" hidden data-i18n="nav.signout">Sign out</button>
+  </nav>
+</header>
+
+<section class="hero">
+  <div>
+    <h1 data-i18n="hero.h1">Add note names to any sheet music — just upload a photo or PDF.</h1>
+    <p class="lead" data-i18n="hero.sub">No MusicXML. No software. Works with a picture from your phone.</p>
+    <div class="cta">
+      <button class="btn-p" id="hero-go" type="button" data-i18n="hero.cta">Try it free</button>
+      <span class="fmt" data-i18n="hero.fmt">PDF · JPG · PNG. Files are deleted right after processing.</span>
+    </div>
+  </div>
+  <figure>
+    <img id="hero-img" src="/hero/sample_en.png" alt="Piano sheet music with note names added in red (right hand) and blue (left hand)" width="1720" height="1162">
+    <figcaption data-i18n="hero.caption">Actual result. Right hand in red, left hand in blue.</figcaption>
+  </figure>
+</section>
+
+<section class="pad" id="demo">
+  <h2 class="sec-title" data-i18n="demo.title">See it in action</h2>
+  <p class="sec-sub" data-i18n="demo.sub">No upload needed yet — change the options below and watch the sample update.</p>
+  <div class="demo-grid">
+    <div class="demo-frame"><img id="demo-img" src="/demo/sample_en_below.png" alt="Sample sheet music with solfège labels added below each note"></div>
+    <div class="demo-opts">
+      <div class="field"><label for="demo-lang" data-i18n="demo.lang_label">Label language</label>
+        <select id="demo-lang">
+          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option>
+          <option value="en" selected data-i18n="tool.lang_en">Letter names (C D E)</option>
+          <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option>
+          <option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option>
+          <option value="de" data-i18n="tool.lang_de">Letter names, German (C D E H)</option>
+        </select></div>
+      <div class="field"><label for="demo-pos" data-i18n="demo.pos_label">Label position</label>
+        <select id="demo-pos">
+          <option value="below" selected data-i18n="demo.pos_below">Below note</option>
+          <option value="above" data-i18n="demo.pos_above">Above note</option>
+        </select></div>
+    </div>
+  </div>
+  <p class="demo-cta"><button class="btn-p" id="demo-go" type="button" data-i18n="demo.cta">Try it with your own sheet music ↓</button></p>
+</section>
+
+<section class="pad" id="how">
+  <h2 class="sec-title" data-i18n="how.title">How it works</h2>
+  <div class="how-grid">
+    <div class="how-step"><span class="how-num">1</span><h3 data-i18n="how.step1_title">Upload</h3><p data-i18n="how.step1_desc">Drop a photo or PDF of your sheet music. No account needed for your first try.</p></div>
+    <div class="how-step"><span class="how-num">2</span><h3 data-i18n="how.step2_title">Choose your labels</h3><p data-i18n="how.step2_desc">Pick a language and where labels appear — above or below each note.</p></div>
+    <div class="how-step"><span class="how-num">3</span><h3 data-i18n="how.step3_title">Download</h3><p data-i18n="how.step3_desc">Get your labeled sheet music in seconds, ready to print or practice with.</p></div>
+  </div>
+</section>
+
+<main class="tool pad" id="tool">
+  <form id="f">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose sheet music file">
+      <strong data-i18n="tool.drop_strong">Drop your sheet music here or click to browse</strong>
+      <p class="file" id="fname"></p>
+      <span class="hint" data-i18n="tool.drop_hint">PDF, JPG, PNG · up to 20MB</span>
+      <span class="sw" data-i18n="tool.drop_sw">Click to choose a different file</span>
+      <input type="file" name="file" id="file" accept=".pdf,.jpg,.jpeg,.png" required>
+    </div>
+
+    <div class="opts">
+      <div><label for="lang" data-i18n="tool.lang_label">Label language</label>
+        <select name="lang" id="lang">
+          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option><option value="en" data-i18n="tool.lang_en">Letter names (C D E)</option>
+          <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option><option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option><option value="de" data-i18n="tool.lang_de">Letter names, German (C D E H)</option>
+        </select></div>
+      <div><label for="position" data-i18n="tool.pos_label">Label position</label>
+        <select name="position" id="position"><option value="below" data-i18n="demo.pos_below">Below note</option><option value="above" data-i18n="demo.pos_above">Above note</option></select></div>
+      <div><label for="mode" data-i18n="tool.mode_label">Layout</label>
+        <select name="mode" id="mode"><option value="greedy" data-i18n="tool.mode_greedy">Avoid overlaps</option><option value="lane" data-i18n="tool.mode_lane">Align in rows</option><option value="overlay" data-i18n="tool.mode_overlay">Overlay on notehead</option></select></div>
+    </div>
+
+    <div class="act">
+      <button class="btn-p" id="go" data-i18n="tool.go">Add note names</button>
+      <p class="credits" id="credits"></p>
+    </div>
+    <p class="status" id="s"></p>
+  </form>
+</main>
+
+<section class="pad" id="compare">
+  <h2 class="sec-title" data-i18n="compare.title">Notalo vs. MusicXML-Based Tools — Two Ways to Add Note Names</h2>
+  <p class="sec-sub" data-i18n="compare.intro">Most note-naming tools require a MusicXML file to start. Notalo works directly from a photo or PDF. Here's how the two approaches compare.</p>
+  <div class="cmp-wrap">
+  <table class="cmp-table">
+    <thead><tr><th></th><th data-i18n="compare.col_notalo">Notalo</th><th data-i18n="compare.col_other">MusicXML-based tools</th></tr></thead>
+    <tbody>
+      <tr><td data-i18n="compare.row_input">Input format</td><td data-i18n="compare.notalo_input">PDF, JPG, PNG</td><td data-i18n="compare.other_input">MusicXML</td></tr>
+      <tr><td data-i18n="compare.row_prep">Prep needed</td><td data-i18n="compare.notalo_prep">None — upload the file as-is</td><td data-i18n="compare.other_prep">Export to MusicXML first (e.g. via MuseScore)</td></tr>
+      <tr><td data-i18n="compare.row_label">Labeling</td><td data-i18n="compare.notalo_label">Solfège + letter names, 5 languages</td><td data-i18n="compare.other_label">Varies by tool (usually letter names)</td></tr>
+      <tr><td data-i18n="compare.row_free">Free usage</td><td data-i18n="compare.notalo_free">1 use without signup + 2 more after signup</td><td data-i18n="compare.other_free">Varies (often limited by saved-score count)</td></tr>
+      <tr><td data-i18n="compare.row_save">Save/share</td><td data-i18n="compare.notalo_save">Not applicable — files deleted after processing</td><td data-i18n="compare.other_save">Some tools offer score libraries and sharing</td></tr>
+      <tr><td data-i18n="compare.row_best">Best for</td><td data-i18n="compare.notalo_best">Sheet music you only have as a photo, scan, or print</td><td data-i18n="compare.other_best">Musicians already working in MusicXML</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="cmp-concl" data-i18n="compare.conclusion">If your sheet music exists only as a photo, a PDF, or a printed page, Notalo skips the file-conversion step entirely. If you already work in MusicXML and want a score library with sharing, a MusicXML-based tool may fit better.</p>
+  <p class="cmp-cta"><button class="btn-p" id="compare-go" type="button" data-i18n="compare.cta">See which approach fits your workflow — try Notalo free →</button></p>
+</section>
+
+<section class="pad" id="pricing">
+  <h2 class="sec-title" data-i18n="pricing.title">Pricing</h2>
+  <p class="sec-sub" data-i18n="pricing.sub">One free try, no signup. Verify your email and get 2 more. Need more? Buy only what you use — no subscription.</p>
+  <div class="plans">
+    <div class="plan">
+      <div class="name" data-i18n="plan.free.name">Free</div>
+      <div class="count">1<small>×</small></div>
+      <div class="price">$0</div>
+      <div class="unit" data-i18n="plan.unit_after_signup">+2 after signup</div>
+      <div class="who" data-i18n="plan.free.who">Try it on one piece first</div>
+      <button class="btn-o" type="button" id="plan-free" data-i18n="plan.free.cta">Start free</button>
+    </div>
+    <div class="plan">
+      <div class="name" data-i18n="plan.starter.name">Starter</div>
+      <div class="count">5<small>×</small></div>
+      <div class="price">US$7.49</div>
+      <div class="who" data-i18n="plan.starter.who">A few practice pieces this month</div>
+      <button class="btn-p buy" type="button" data-plan="starter" disabled>…</button>
+    </div>
+    <div class="plan rec">
+      <span class="badge" data-i18n="plan.badge">Recommended</span>
+      <div class="name" data-i18n="plan.standard.name">Standard</div>
+      <div class="count">30<small>×</small></div>
+      <div class="price">US$29</div>
+      <div class="who" data-i18n="plan.standard.who">Best for steady, regular learners</div>
+      <button class="btn-p buy" type="button" data-plan="standard" disabled>…</button>
+    </div>
+    <div class="plan">
+      <div class="name" data-i18n="plan.pro.name">Pro</div>
+      <div class="count">100<small>×</small></div>
+      <div class="price">US$74</div>
+      <div class="who" data-i18n="plan.pro.who">For teachers — a whole class at once</div>
+      <button class="btn-p buy" type="button" data-plan="pro" disabled>…</button>
+    </div>
+  </div>
+  <p class="note" data-i18n="pricing.note">Payments are processed in USD via PayPal. Purchased credits stay on your account with no expiration.</p>
+</section>
+
+<section class="pad" id="faq">
+  <h2 class="sec-title" data-i18n="faq.title">FAQ</h2>
+  <div>
+    <details class="faq-item"><summary data-i18n="faq.q1">What file formats are supported?</summary><p data-i18n="faq.a1">PDF, JPG, and PNG — sheet music files up to 20MB.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q2">Do I need MusicXML or notation software?</summary><p data-i18n="faq.a2">No. Just upload a photo or PDF of your sheet music as-is — Notalo detects noteheads directly from the image.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q3">Is it free?</summary><p data-i18n="faq.a3">Yes — one free try without signing up, plus 2 more after verifying your email. After that, credits are available at low one-time prices, no subscription.</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q4">What note-name languages are supported?</summary><p data-i18n="faq.a4">Korean (도레미), English (C D E), Italian (Do Re Mi), Japanese (ドレミ), and German (C D E H).</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q5">Are my files stored?</summary><p data-i18n="faq.a5">No. Uploaded files and results are deleted immediately after processing.</p></details>
+  </div>
+</section>
+
+<dialog id="pay" aria-labelledby="pay-title">
+  <button class="x" type="button" id="pay-x" aria-label="Close">&times;</button>
+  <h2 id="pay-title"></h2>
+  <p class="tip" id="pay-desc"></p>
+  <div id="pp"></div>
+  <p class="msg" id="pay-msg" aria-live="polite"></p>
+</dialog>
+
+<dialog id="login" aria-labelledby="login-title">
+  <button class="x" type="button" id="login-x" aria-label="Close">&times;</button>
+  <h2 id="login-title">Sign in</h2>
+  <div id="gsi"></div>
+  <button class="google" type="button" id="google-btn">
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.6l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.7l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.7-4.1-13.6-9.9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+    <span data-i18n="login.google_btn">Continue with Google</span>
+  </button>
+  <p class="or" data-i18n="login.or">or with email</p>
+  <form id="login-form">
+    <div class="field" id="email-field"><label for="email" data-i18n="login.email_label">Email</label><input type="email" id="email" name="email" autocomplete="email" required></div>
+    <div class="field" id="pw-field"><label for="pw" id="pw-label" data-i18n="login.pw_label">Password</label><input type="password" id="pw" name="password" autocomplete="current-password" minlength="8" required></div>
+    <button class="btn-p" type="submit" id="login-submit" data-i18n="login.btn_login">Sign in</button>
+    <p class="tip" id="signup-tip" hidden data-i18n="login.signup_tip">We'll email you a verification link to finish signing up.</p>
+    <p class="msg" id="login-msg" aria-live="polite"></p>
+  </form>
+  <p class="swap" id="swap"></p>
+</dialog>
+
+<footer>
+  <span class="brand">Notalo</span>
+  <div>
+    <p><span data-i18n="footer.credit_pre">The note-detection model was trained on the </span><a href="https://zenodo.org/records/4012193" rel="noopener">DeepScoresV2</a><span data-i18n="footer.credit_post"> dataset (Tuggener et al., CC BY 4.0).</span></p>
+    <p data-i18n="footer.privacy">Uploaded files and results are deleted right after processing.</p>
+  </div>
+</footer>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const show = (el, on) => { el.hidden = !on; };
+
+// ---------- i18n ----------
+const LANGS = { en:"English", ko:"한국어", es:"Español", ja:"日本語", de:"Deutsch", it:"Italiano", fr:"Français", pt:"Português" };
+const HERO_LANG = { ko:'ko', en:'en', ja:'ja', de:'de', it:'it', es:'it', fr:'it', pt:'it' };  // 스페인·프랑스·포르투갈은 도레미(이탈리아식)
+let T = {};
+const t = (k, vars) => { let s = T[k] || k; if (vars) for (const key in vars) s = s.split(`{${key}}`).join(vars[key]); return s; };
+const applyI18n = () => {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const html = T[el.dataset.i18n] || '';
+    if (html.includes('<a ')) el.innerHTML = html; else el.textContent = html;
+  });
+};
+const detectLang = () => {
+  const saved = localStorage.getItem('notalo_lang');
+  return (saved && LANGS[saved]) ? saved : 'en';  // 기본은 항상 영어. 브라우저 언어로 자동 전환하지 않음
+};
+let currentLang = 'en';
+const loadLang = async code => {
+  const r = await fetch(`/i18n/${code}.json`);
+  T = await r.json();
+  currentLang = code;
+  document.documentElement.lang = code;
+  $('hero-img').src = `/hero/sample_${HERO_LANG[code] || 'en'}.png`;
+  applyI18n();
+  refreshDynamicText();
+};
+const sw = $('lang-switch');
+Object.entries(LANGS).forEach(([code, label]) => { const o = document.createElement('option'); o.value = code; o.textContent = label; sw.append(o); });
+sw.onchange = () => { localStorage.setItem('notalo_lang', sw.value); loadLang(sw.value); };
+
+// ---------- 업로드 ----------
+const drop = $('drop'), file = $('file'), fname = $('fname'), s = $('s'), go = $('go');
+const pick = f => {
+  if (f) {
+    if (f.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); return; }
+    file.files = f;
+  }
+  const n = file.files[0]?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n);
+};
+drop.onclick = () => file.click();
+$('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
+$('demo-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
+$('compare-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
+drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } };
+file.onchange = () => { if (file.files.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); file.value = ''; return; } pick(); };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); pick(e.dataTransfer.files); };
+const openPricing = () => $('pricing').scrollIntoView({ block: 'start' });
+const api = async (path, body) => {
+  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) { let d = t('tool.status_fail'); try { d = (await r.json()).detail || d; } catch (_) {} throw new Error(d); }
+  return r.status === 204 ? null : r.json();
+};
+const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!email); show($('login-btn'), !email); $('user').textContent = email ? email.split('@')[0] : ''; };
+$('plan-free').onclick = () => $('tool').scrollIntoView({ block: 'start' });
+
+// ---------- 데모 섹션 (미리 생성된 정적 이미지 교체) ----------
+const demoImg = $('demo-img'), demoLang = $('demo-lang'), demoPos = $('demo-pos');
+const updateDemo = () => { demoImg.src = `/demo/sample_${demoLang.value}_${demoPos.value}.png`; };
+demoLang.onchange = updateDemo; demoPos.onchange = updateDemo;
+
+// ---------- 로그인 ----------
+const login = $('login'), msg = $('login-msg');
+const openLogin = asSignup => { setMode(asSignup ? 'signup' : 'login'); login.showModal(); };
+let mode = 'login', resetToken = '';
+const MODE_KEYS = {
+  login:  { title: 'login.title_login', btn: 'login.btn_login', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_login' },
+  signup: { title: 'login.title_signup', btn: 'login.btn_signup', email: true, pw: true, pwLabel: 'login.pw_label', swap: 'login.swap_signup' },
+  forgot: { title: 'login.title_forgot', btn: 'login.btn_forgot', email: true, pw: false, swap: 'login.swap_forgot' },
+  reset:  { title: 'login.title_reset', btn: 'login.btn_reset', email: false, pw: true, pwLabel: 'login.pw_label_reset', swap: '' },
+};
+const setMode = m => { mode = m; const c = MODE_KEYS[m];
+  $('login-title').textContent = t(c.title); $('login-submit').textContent = t(c.btn); msg.textContent = '';
+  show($('email-field'), c.email); show($('pw-field'), c.pw); $('email').required = c.email; $('pw').required = c.pw;
+  if (c.pw) { $('pw-label').textContent = t(c.pwLabel); $('pw').autocomplete = m === 'login' ? 'current-password' : 'new-password'; }
+  show($('signup-tip'), m === 'signup'); show($('google-btn'), m !== 'reset' && !$('google-btn').dataset.gsi); show($('gsi'), m !== 'reset'); show(login.querySelector('.or'), m !== 'reset');
+  $('swap').innerHTML = c.swap ? t(c.swap) : ''; show($('swap'), !!c.swap); $('swap').querySelectorAll('a').forEach(a => { a.onclick = () => setMode(a.dataset.m); }); };
+$('login-btn').onclick = () => openLogin(false);
+$('login-x').onclick = () => login.close();
+login.onclick = e => { if (e.target === login) login.close(); };
+$('logout-btn').onclick = async () => { await api('/logout', {}); credits(); };
+$('login-form').onsubmit = async e => {
+  e.preventDefault(); msg.textContent = '';
+  const body = { email: $('email').value, password: $('pw').value }, btn = $('login-submit');
+  btn.disabled = true;
+  try {
+    if (mode === 'signup') { await api('/signup', body); msg.textContent = t('login.signup_sent', { email: body.email }); credits(); }
+    else if (mode === 'forgot') { await api('/forgot', body); msg.textContent = t('login.forgot_sent', { email: body.email }); }
+    else if (mode === 'reset') { await api('/reset', { token: resetToken, password: body.password }); login.close(); s.textContent = t('login.reset_done'); credits(); }
+    else { await api('/login', body); login.close(); credits(); }
+  } catch (err) { msg.textContent = err.message; } finally { btn.disabled = false; }
+};
+let pendingVerified = false;
+(async () => {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.get('verified')) { history.replaceState(null, '', '/'); pendingVerified = true; }
+    if (q.get('reset')) { resetToken = q.get('reset'); history.replaceState(null, '', '/'); setMode('reset'); login.showModal(); $('pw').focus(); }
+    const { google_client_id } = await (await fetch('/auth/config')).json();
+    if (!google_client_id) return;
+    const sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true;
+    sc.onload = () => {
+      google.accounts.id.initialize({ client_id: google_client_id, callback: async ({ credential }) => {
+        try { await api('/login/google', { credential }); login.close(); credits(); } catch (err) { msg.textContent = err.message; } } });
+      google.accounts.id.renderButton($('gsi'), { theme: 'outline', size: 'large', text: 'continue_with', locale: currentLang, width: 344 });
+      show($('google-btn'), false); $('google-btn').dataset.gsi = '1';
+    };
+    document.head.append(sc);
+  } catch (_) {}
+})();
+let lastCreditsData = null;
+const showCredits = data => {
+  lastCreditsData = data;
+  const { left, user, verified, free_mode } = data;
+  const c = $('credits'); c.className = 'credits' + (left > 0 ? '' : ' out'); c.textContent = '';
+  const btn = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-o btn-s'; b.textContent = label; b.onclick = fn; c.append(b); };
+  if (free_mode) { c.textContent = t('credits.free_mode'); return; }
+  if (!user) {
+    if (left > 0) c.textContent = t('credits.guest_left', { n: left });
+    else { c.textContent = t('credits.guest_out'); btn(t('credits.signup_btn'), () => openLogin(true)); }
+  } else if (!verified) {
+    c.textContent = left > 0 ? t('credits.unverified_left', { n: left }) : t('credits.unverified_out');
+    btn(t('credits.resend_btn'), async e => { e.target.disabled = true; try { await api('/resend', { email: user }); e.target.textContent = t('credits.resend_sent'); } catch (err) { e.target.textContent = err.message; } });
+  } else if (left > 0) c.textContent = t('credits.left', { n: left });
+  else { c.textContent = t('credits.out'); btn(t('credits.pricing_btn'), openPricing); }
+};
+let me = null;
+const credits = async () => { try { const d = await (await fetch('/credits')).json(); me = d.user; setUser(d.user); showCredits(d); if (pendingVerified) { s.textContent = t('login.verified_msg'); pendingVerified = false; } } catch (_) {} };
+
+// ---------- 결제 (PayPal). 서버가 금액을 정하고 확정까지 하므로 프론트는 주문 id만 오간다 ----------
+const pay = $('pay'), payMsg = $('pay-msg');
+$('pay-x').onclick = () => pay.close();
+pay.onclick = e => { if (e.target === pay) pay.close(); };
+let payCfg = null;
+(async () => {
+  try {
+    payCfg = await (await fetch('/pay/config')).json();
+    if (!payCfg.client_id) return;
+    const sc = document.createElement('script'); sc.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(payCfg.client_id)}&currency=USD&intent=capture&disable-funding=paylater`;
+    sc.onload = () => document.querySelectorAll('.buy').forEach(b => {
+      const p = payCfg.plans[b.dataset.plan]; b.disabled = false; b.textContent = t('pay.buy');
+      b.onclick = () => {
+        if (!me) { openLogin(false); msg.textContent = t('pay.login_first'); return; }
+        $('pay-title').textContent = `${p.name} ${p.credits}${t('pay.title_suffix')}`; $('pay-desc').textContent = t('pay.desc', { usd: p.usd, email: me });
+        payMsg.textContent = ''; $('pp').innerHTML = ''; pay.showModal();
+        paypal.Buttons({
+          style: { layout: 'vertical', color: 'black', shape: 'pill', label: 'pay' },
+          createOrder: async () => (await api('/pay/order', { plan: b.dataset.plan })).id,
+          onApprove: async d => { const r = await api('/pay/capture', { order_id: d.orderID }); pay.close(); s.className = 'status'; s.textContent = t('pay.done', { n: r.credited, left: r.left }); credits(); $('tool').scrollIntoView({ block: 'start' }); },
+          onError: err => { payMsg.textContent = (err && err.message) || t('pay.fail_generic'); },
+        }).render('#pp');
+      };
+    });
+    sc.onerror = () => document.querySelectorAll('.buy').forEach(b => { b.textContent = t('pay.sdk_fail'); });  // 보통 Client ID 오타·Live/Sandbox 불일치
+    document.head.append(sc);
+  } catch (_) {}
+})();
+
+// 언어 전환 시 이미 렌더된 동적 텍스트(크레딧 표시, 결제 버튼)도 다시 그림
+const refreshDynamicText = () => {
+  if (lastCreditsData) showCredits(lastCreditsData);
+  if (payCfg) document.querySelectorAll('.buy').forEach(b => { if (!b.disabled) b.textContent = t('pay.buy'); });
+};
+
+$('f').onsubmit = async e => {
+  e.preventDefault();
+  if (!file.files[0]) { s.className = 'status err'; s.textContent = t('tool.status_pick_file'); return; }
+  if (file.files.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); return; }
+  go.disabled = true; s.className = 'status'; s.textContent = t('tool.status_uploading');
+  try {
+    const r = await fetch('/jobs', { method: 'POST', body: new FormData($('f')) });
+    if (!r.ok) {
+      let m = t('tool.status_fail');
+      try { const j = await r.json(); if (j.detail) m = j.detail; } catch (_) {}
+      throw new Error(m);
+    }
+    const { id } = await r.json();
+    localStorage.setItem('notalo_filename', file.files[0].name);
+    location.href = `/processing?job=${id}`;
+  } catch (err) {
+    s.className = 'status err'; s.textContent = err.message; go.disabled = false;
+  }
+};
+
+// ---------- 시작 ----------
+(async () => {
+  const lang = detectLang();
+  sw.value = lang;
+  await loadLang(lang);
+  setMode('login');
+  credits();
+})();
+</script>
+</html>

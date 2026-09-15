@@ -1,0 +1,7 @@
+flask
+gunicorn
+opencv-python-headless
+numpy
+pillow
+pdf2image
+homr
