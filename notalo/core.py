@@ -6,7 +6,7 @@ import numpy as np
 
 
 def load_pages(path):
-    """PDF/JPG/PNG → RGB numpy 페이지 리스트."""
+    """PDF/JPG/PNG → RGB numpy 페이지 리스트. 기울어진 스캔은 여기서 바로 세움(출력 악보도 같이 바로 선다)."""
     if path.lower().endswith(".pdf"):
         from pdf2image import convert_from_path  # poppler 필요
         pages = [np.array(p.convert("RGB")) for p in convert_from_path(path, dpi=200)]
@@ -14,12 +14,64 @@ def load_pages(path):
         bgr = cv2.imread(path)
         pages = [] if bgr is None else [cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)]
     assert pages, f"못 읽음: {path}"
-    return pages
+    return [deskew(p) for p in pages]
+
+
+def skew_angle(gray, max_deg=3.0):
+    """스캔 기울기(도). 오선이 수평이면 행 잉크 투영이 뾰족해짐(제곱합 최대) → 그 각을 찾음.
+    1/4 축소본으로 0.25° 거친 탐색 → 0.05° 정밀 탐색."""
+    small = cv2.resize(gray, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    ink = (binarize(small) > 0).astype(np.float32)
+    h, w = ink.shape
+    ctr = (w / 2, h / 2)
+
+    def score(deg):
+        m = cv2.getRotationMatrix2D(ctr, deg, 1.0)
+        r = cv2.warpAffine(ink, m, (w, h), flags=cv2.INTER_NEAREST, borderValue=0)
+        p = r.sum(axis=1)
+        return float((p * p).sum())
+
+    def best(angles):
+        # 1/4 축소본에선 ±0.1° 안이 같은 점수(평탄) → 평탄 구간의 가운데. 첫 최대값을 쓰면 -0.1°로 치우쳐 멀쩡한 페이지도 돌림
+        sc = np.array([score(a) for a in angles])
+        i = j = int(sc.argmax())
+        while i > 0 and sc[i - 1] >= 0.995 * sc[j]:
+            i -= 1
+        k = j
+        while k + 1 < len(sc) and sc[k + 1] >= 0.995 * sc[j]:
+            k += 1
+        return float((angles[i] + angles[k]) / 2)
+
+    b = best(np.arange(-max_deg, max_deg + 1e-6, 0.25))
+    return best(np.arange(b - 0.25, b + 0.25 + 1e-6, 0.05))
+
+
+def deskew(page_rgb):
+    """기울어진 페이지를 바로 세움(흰 배경 채움). 0.1° 미만이면 원본 그대로(깨끗한 렌더에 보간 번짐 안 줌)."""
+    deg = skew_angle(cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY))
+    if abs(deg) < 0.1:
+        return page_rgb
+    h, w = page_rgb.shape[:2]
+    m = cv2.getRotationMatrix2D((w / 2, h / 2), deg, 1.0)
+    return cv2.warpAffine(page_rgb, m, (w, h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+
+
+def flatten(gray):
+    """고르지 않은 조명(그림자·누런 종이) 보정: 배경 밝기로 나눠 흰 종이로 만든다.
+    배경 = 1/4 축소본을 닫힘 연산(팽창→침식)으로 기호를 지운 것. 커널은 폭의 1/40 ≈ 3~4 staff space."""
+    h, w = gray.shape
+    small = cv2.resize(gray, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    k = max(int(w / 160) | 1, 5)
+    bg = cv2.morphologyEx(small, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_RECT, (k, k)))
+    bg = cv2.resize(cv2.GaussianBlur(bg, (0, 0), k / 2), (w, h), interpolation=cv2.INTER_LINEAR)
+    bg = np.maximum(bg, 32).astype(np.float32)
+    out = np.minimum(gray.astype(np.float32) * 255.0 / bg, 255.0)
+    return out.astype(np.uint8)
 
 
 def binarize(gray):
-    """잉크=255, 배경=0."""
-    _, ink = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
+    """잉크=255, 배경=0. 조명 보정 후 Otsu."""
+    _, ink = cv2.threshold(flatten(gray), 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     return ink
 
 
@@ -115,17 +167,52 @@ def _group_lenient(ink, lines):
     return staves
 
 
+def _group_ref(ink, lines, ref, row_ink):
+    """기준 간격(ref)으로 다음 선 자리를 예측하고 가장 가까운 후보(±0.25ref)를 고른다.
+    빔·가사 행처럼 끼어든 후보는 자리에 안 맞으니 자연히 무시됨(빽빽한 16분음표 빔 시스템용).
+    5선 중 1개까지는 후보에 없어도 예측 자리에 잉크가 조금(폭의 10%)이라도 있으면 그 자리로 채움."""
+    w = ink.shape[1]
+    arr = np.array(lines, dtype=float)
+    staves, used = [], set()
+    for y0 in lines:
+        if y0 in used:
+            continue
+        ys, missing = [float(y0)], 0
+        while len(ys) < 5:
+            exp = ys[-1] + ref
+            cand = arr[(np.abs(arr - exp) <= 0.25 * ref) & (arr > ys[-1])]
+            if len(cand):
+                ys.append(float(cand[np.abs(cand - exp).argmin()]))
+            else:
+                r = int(round(exp))
+                if missing or r + 2 >= len(row_ink) or row_ink[max(r - 2, 0):r + 3].max() < 0.1 * w:
+                    break
+                ys.append(float(r + int(row_ink[max(r - 2, 0):r + 3].argmax()) - min(r, 2)))
+                missing += 1
+        if len(ys) < 5:
+            continue
+        s = _make_staff(ink, ys)
+        if s:
+            staves.append(s)
+            used.update(int(y) for y in ys)
+    return staves
+
+
 def detect_staves(ink):
     """오선 → [{"lines":[y*5], "space":float, "x0","x1","mask_x1"}].
     mask_x1: 음자리표+조표 끝 x (hollow 음표 검출에만 적용할 마스크 경계).
     1) 진한 선 기준(페이지 최대 잉크의 60%)으로 찾고, 2) 옅게 인쇄된 시스템은 낮은 임계값으로 보완.
+    보완: 1)에서 오선 간격을 알면 그 간격으로 자리를 맞춰 찾고(_group_ref), 모르면 등간격 탐색(_group_lenient).
     보완 오선은 기존 오선과 세로로 겹치거나 선 간격이 크게 다르면 버림(가짜 방지).
-    ponytail: 기울어진 스캔은 못 잡음. 필요시 deskew 추가."""
+    기울기는 load_pages의 deskew가, 조명 얼룩은 binarize의 flatten이 미리 처리."""
     h, w = ink.shape
-    row_max = (ink > 0).sum(axis=1).max()
+    row_ink = (ink > 0).sum(axis=1)
+    row_max = row_ink.max()
     staves = _group_strict(ink, _line_rows(ink, max(0.6 * row_max, 0.2 * w)))
     ref = float(np.median([s["space"] for s in staves])) if staves else None
-    for s in _group_lenient(ink, _line_rows(ink, 0.2 * w)):
+    low = _line_rows(ink, 0.2 * w)
+    extra = _group_ref(ink, low, ref, row_ink) if ref else _group_lenient(ink, low)
+    for s in extra:
         if ref and not 0.7 * ref < s["space"] < 1.3 * ref:
             continue
         if any(s["lines"][0] <= t["lines"][4] + t["space"] and t["lines"][0] <= s["lines"][4] + s["space"] for t in staves):
@@ -133,7 +220,55 @@ def detect_staves(ink):
         staves.append(s)
     staves.sort(key=lambda s: s["lines"][0])
     assert staves, "오선 못 찾음"
+    for s in staves:
+        s["ly"] = _track_lines(ink, s)
     return staves
+
+
+def _track_lines(ink, s):
+    """휜 스캔(책 등 쪽이 굽어 오선이 활처럼 휨)용: 5줄을 x 방향으로 따라가며 열마다 실제 y를 기록 → (5, W) 배열.
+    창(2ss 폭)마다 5줄이 함께 움직인 세로 오프셋을 잉크 합이 최대인 곳으로 찾는다(빔이 한 줄에 겹쳐도 나머지 4줄이 버팀).
+    전체 행 투영으로 찾은 s["lines"]는 페이지 일부에서만 맞을 수 있어, 가장 잘 맞는 창에서 시작해 양쪽으로 추적."""
+    h, w = ink.shape
+    ss, base = s["space"], np.array(s["lines"], dtype=float)
+    win, r = max(int(2 * ss), 8), max(int(0.35 * ss), 2)
+    xs = list(range(s["x0"], max(s["x1"] - win + 1, s["x0"] + 1), win))
+    on = ink > 0
+    profs = []
+    for x in xs:
+        p = on[:, x:x + win].sum(axis=1).astype(np.float32)
+        p3 = p.copy()  # 줄 두께 2~3px → 이웃 행 최대값(±1)로 관대하게
+        p3[1:] = np.maximum(p3[1:], p[:-1])
+        p3[:-1] = np.maximum(p3[:-1], p[1:])
+        profs.append(p3)
+
+    def score(p, d):
+        ys = np.clip(np.round(base + d).astype(int), 0, h - 1)
+        return float(p[ys].sum())
+
+    start = max(range(len(xs)), key=lambda i: score(profs[i], 0))
+    off = np.zeros(len(xs))
+    for order in (range(start + 1, len(xs)), range(start - 1, -1, -1)):
+        prev = 0.0
+        for i in order:
+            cands = range(int(prev) - r, int(prev) + r + 1)
+            d = max(cands, key=lambda d: score(profs[i], d))
+            if score(profs[i], d) < 1.5 * win:  # 줄이 거의 안 보이는 창(끝 여백 등)은 이전 값 유지
+                d = prev
+            off[i] = prev = d
+    if len(off) >= 3:  # 창 하나의 튐(빔·화음 덩어리) 완화
+        off = np.array([np.median(off[max(i - 1, 0):i + 2]) for i in range(len(off))])
+    centers = np.array(xs, dtype=float) + win / 2
+    cols = np.interp(np.arange(w, dtype=float), centers, off) if len(xs) > 1 else np.full(w, off[0])
+    return base[:, None] + cols[None, :]
+
+
+def line_y(s, k, x):
+    """오선 s의 k번째 줄(0=맨 위)이 열 x에서 지나는 y. 휜 페이지에선 열마다 다름."""
+    ly = s.get("ly")
+    if ly is None:
+        return float(s["lines"][k])
+    return float(ly[k, min(max(int(x), 0), ly.shape[1] - 1)])
 
 
 def _clef_key_end(ink, ys, space, x0):
@@ -233,8 +368,9 @@ def _has_ledger(ink, x, y, ss):
 
 def detect_barlines(ink, s, heads, ss):
     """마디선 x 목록. 오선 1~5줄을 세로로 꽉 채운 얇은 잉크 열 중 음표머리(기둥) 근처가 아닌 것."""
-    top, bot = int(s["lines"][0]) + 1, int(s["lines"][4])  # 오선 안쪽만. 바깥 1px는 마디선이 정확히 줄에서 끝나 비어있음
-    full = (ink[top:bot, s["x0"]:s["x1"] + 1] > 0).all(axis=0)
+    # 오선 안쪽만(위아래 1px 제외: 마디선은 정확히 줄에서 끝나 바깥은 비어있음). 휜 페이지라 열마다 줄 y가 다름
+    on = ink > 0
+    full = np.array([on[int(line_y(s, 0, x)) + 1:int(line_y(s, 4, x)), x].all() for x in range(s["x0"], s["x1"] + 1)])
     hx = np.array([h["x"] for h in heads]) if heads else np.zeros(0)
     xs, x = [], 0
     while x < len(full):
@@ -256,14 +392,15 @@ CLEF_BOTTOM = {"clef_g": 4 * 7 + 2, "clef_f": 2 * 7 + 4, "clef_c": 3 * 7 + 3, "c
 
 def _clef_kind(d, s):
     """YOLO는 C 음자리표를 한 클래스로 봄. 기호 중심이 가운데 줄보다 반 칸 이상 위면 테너(4번째 줄), 아니면 알토."""
-    if d["cls"] == "clef_c" and d["y"] < s["lines"][2] - 0.5 * s["space"]:
+    if d["cls"] == "clef_c" and d["y"] < line_y(s, 2, d["x"]) - 0.5 * s["space"]:
         return "clef_c_tenor"
     return d["cls"]
 
 
-def _step_pitch(y, s, clef):
-    """머리 y → (계이름 글자, 옥타브). 맨 아래 줄에서 반칸(ss/2) 단위로 올라간 수 = 음계 계단."""
-    step = int(round((s["lines"][4] - y) / (s["space"] / 2)))
+def _step_pitch(y, s, clef, x=None):
+    """머리 (x,y) → (계이름 글자, 옥타브). 그 열의 맨 아래 줄에서 반칸(ss/2) 단위로 올라간 수 = 음계 계단."""
+    bottom = line_y(s, 4, x) if x is not None else s["lines"][4]
+    step = int(round((bottom - y) / (s["space"] / 2)))
     idx = CLEF_BOTTOM[clef] + step
     assert 0 <= idx < 9 * 7, (y, clef)
     return LETTERS[idx % 7], idx // 7
@@ -337,7 +474,7 @@ def assign_pitches(ink, staves, dets, heads):
                 near = [h for h in hs if 0.3 * ss < h["x"] - x < 3.0 * ss and abs(h["y"] - ay) < 0.6 * ss]
                 if near:
                     flush()
-                    letter, octv = _step_pitch(near[0]["y"], s, cur_clef)
+                    letter, octv = _step_pitch(near[0]["y"], s, cur_clef, near[0]["x"])
                     measure_acc[(letter, octv)] = alter
                 elif not head_since_anchor:
                     group.append(d)  # 조표 후보 (묶음은 다음 음표/마디선/음자리표에서 확정)
@@ -345,7 +482,7 @@ def assign_pitches(ink, staves, dets, heads):
             else:
                 flush()
                 head_since_anchor = True
-                letter, octv = _step_pitch(d["y"], s, cur_clef)
+                letter, octv = _step_pitch(d["y"], s, cur_clef, d["x"])
                 alter = measure_acc.get((letter, octv), key.get(letter, 0))
                 d["pitch"] = f"{letter}{'#' if alter > 0 else 'b' if alter < 0 else ''}{octv}"
                 d["clef"] = "bass" if cur_clef == "clef_f" else "treble"
@@ -366,9 +503,10 @@ def detect_notes(page_rgb):
             continue
         si = _staff_of(d["y"], staves)
         s = staves[si]
-        if not (s["lines"][0] - 6 * ss < d["y"] < s["lines"][4] + 6 * ss) or d["x"] > s["x1"] + ss:
+        top, bot = line_y(s, 0, d["x"]), line_y(s, 4, d["x"])  # 휜 페이지: 그 열의 줄 위치
+        if not (top - 6 * ss < d["y"] < bot + 6 * ss) or d["x"] > s["x1"] + ss:
             continue
-        outside = max(s["lines"][0] - d["y"], d["y"] - s["lines"][4])
+        outside = max(top - d["y"], d["y"] - bot)
         if outside > 0.75 * ss and not _has_ledger(ink, d["x"], d["y"], ss):
             continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 머리
         heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
@@ -383,7 +521,7 @@ def detect_notes(page_rgb):
     assert all("pitch" in h for h in heads)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용
     return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "staff": h["staff"], "ss": ss,
-             "staff_top": staves[h["staff"]]["lines"][0], "staff_bot": staves[h["staff"]]["lines"][4]} for h in heads]
+             "staff_top": line_y(staves[h["staff"]], 0, h["x"]), "staff_bot": line_y(staves[h["staff"]], 4, h["x"])} for h in heads]
 
 
 NAMES = {  # 고정도: C=도. 옥타브는 표기 안 함
