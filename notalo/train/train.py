@@ -1,5 +1,6 @@
-"""YOLOv8n 학습 → ONNX 내보내기. 사용: py -3 train/train.py <data.yaml> [epochs]
-결과: notalo/weights/notes.onnx (서빙은 onnxruntime만 씀, torch 불필요)."""
+"""YOLOv8n 학습 → ONNX 내보내기. 사용: py -3 train/train.py <data.yaml> [epochs] [fraction] [resume]
+결과: notalo/weights/notes.onnx (서빙은 onnxruntime만 씀, torch 불필요).
+나쁜 스캔(번짐·얼룩·누런 종이)까지 잡으려면 학습 전에 train/degrade.py로 열화 타일을 섞는다 — train/README.md 참고."""
 import os
 import shutil
 import sys

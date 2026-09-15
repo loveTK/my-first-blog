@@ -491,12 +491,14 @@ def assign_pitches(ink, staves, dets, heads):
 
 def detect_notes(page_rgb):
     """음표 머리 검출 + 음높이 → [{"x","y","pitch","clef"}]. pitch 예: C4, F#5, Bb3."""
-    ink = binarize(cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY))
+    gray = cv2.cvtColor(page_rgb, cv2.COLOR_RGB2GRAY)
+    ink = binarize(gray)
     staves = detect_staves(ink)
     if not os.path.exists(WEIGHTS):  # 가중치 미배포 상태(학습 중)엔 빈 결과 — 서비스는 안 죽게
         return []
     ss = float(np.median([s["space"] for s in staves]))
-    dets = detect_symbols(page_rgb, ss)
+    # YOLO에도 조명 보정본을 줌: 학습 데이터(DeepScoresV2)가 흰 종이라 누렇거나 그늘진 스캔과의 차이를 줄임
+    dets = detect_symbols(cv2.cvtColor(flatten(gray), cv2.COLOR_GRAY2RGB), ss)
     heads = []
     for d in dets:
         if not d["cls"].startswith("notehead"):
