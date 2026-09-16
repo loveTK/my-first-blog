@@ -8,6 +8,7 @@ import random
 import sys
 
 import cv2
+import numpy as np
 
 TILE, STRIDE = 1024, 896  # 128px 겹침
 CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
@@ -47,7 +48,7 @@ def boxes_of(img, cats, anns):
 
 
 def tile_page(img_path, boxes, out_img_dir, out_lbl_dir, stem):
-    im = cv2.imread(img_path)
+    im = img_path if isinstance(img_path, np.ndarray) else cv2.imread(img_path)  # 경로 또는 이미 읽은 배열
     assert im is not None, img_path
     H, W = im.shape[:2]
     if H < TILE or W < TILE:  # 타일보다 작은 페이지는 흰색으로 채워 맞춤
