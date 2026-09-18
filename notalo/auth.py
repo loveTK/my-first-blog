@@ -77,7 +77,7 @@ class _Conn:
 SMTP_USER, SMTP_PASS = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASS")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GUEST_FREE, SIGNUP_BONUS = 1, 2
-FREE_MODE = True  # 초기 무료+애드센스 전환 기간: 크레딧 체크/차감 건너뜀. 유료 전환 시 False로.
+FREE_MODE = True  # 수익 모델은 애드센스 광고. 크레딧 체크/차감 안 함(요금제·PayPal UI는 제거됨, 서버 코드만 남아 있음).
 COOKIE_AGE = 30 * 24 * 3600
 router = APIRouter()
 rate_limit = lambda request: None  # app.py가 IP 레이트리밋 함수 주입
