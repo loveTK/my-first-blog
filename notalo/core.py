@@ -4,17 +4,27 @@ import os
 import cv2
 import numpy as np
 
+MAX_SIDE = 3500  # 페이지 긴 변 상한(px). 처리시간은 픽셀 수에 비례
+
 
 def load_pages(path):
     """PDF/JPG/PNG → RGB numpy 페이지 리스트. 기울어진 스캔은 여기서 바로 세움(출력 악보도 같이 바로 선다)."""
     if path.lower().endswith(".pdf"):
-        from pdf2image import convert_from_path  # poppler 필요
-        pages = [np.array(p.convert("RGB")) for p in convert_from_path(path, dpi=200)]
+        from pdf2image import convert_from_path, pdfinfo_from_path  # poppler 필요
+        # 긴 변 MAX_SIDE px 넘지 않게 dpi를 줄여서 렌더(큰 스캔 PDF는 200dpi면 6000px+ → 처리시간 3배). A4는 200dpi 그대로
+        pts = max(float(v) for v in pdfinfo_from_path(path)["Page size"].split(" pts")[0].split(" x "))
+        pages = [np.array(p.convert("RGB")) for p in convert_from_path(path, dpi=min(200, MAX_SIDE * 72 / pts))]
     else:
         bgr = cv2.imread(path)
         pages = [] if bgr is None else [cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)]
     assert pages, f"못 읽음: {path}"
-    return [deskew(p) for p in pages]
+    return [deskew(shrink(p)) for p in pages]
+
+
+def shrink(page):
+    """긴 변이 MAX_SIDE보다 크면 축소. 오선 간격은 학습(16.5px)보다 넉넉히 남아 정확도 차이 없음(엘리제 6687px→3500px: 354→352 음표)."""
+    f = MAX_SIDE / max(page.shape[:2])
+    return page if f >= 1 else cv2.resize(page, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
 
 
 def skew_angle(gray, max_deg=3.0):
@@ -304,7 +314,7 @@ def _clef_key_end(ink, ys, space, x0):
 
 
 TRAIN_SS = 16.5  # 학습 데이터(DeepScoresV2) staff space(px). 추론 전 페이지를 이 크기로 맞춤
-TILE, STRIDE = 1024, 896
+TILE, STRIDE = 1024, 960  # 겹침 64px ≈ 4 staff space(음표머리 1개는 1 ss)
 CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
 WEIGHTS = os.environ.get("NOTALO_WEIGHTS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "notes.onnx"))
 _sess = None
@@ -327,8 +337,9 @@ def detect_symbols(page_rgb, ss, conf=0.3):
     if H < TILE or W < TILE:
         img = cv2.copyMakeBorder(img, 0, max(TILE - H, 0), 0, max(TILE - W, 0), cv2.BORDER_CONSTANT, value=(255, 255, 255))
         H, W = img.shape[:2]
-    ys = sorted(set(list(range(0, H - TILE + 1, STRIDE)) + [H - TILE]))
-    xs = sorted(set(list(range(0, W - TILE + 1, STRIDE)) + [W - TILE]))
+    # 타일을 등간격으로 배치(마지막 타일이 앞 타일과 거의 겹치던 낭비 제거). 겹침 최소 TILE-STRIDE px
+    grid = lambda L: np.linspace(0, L - TILE, int(np.ceil((L - TILE) / STRIDE)) + 1).astype(int)
+    ys, xs = grid(H), grid(W)
     sess, name = _session(), _session().get_inputs()[0].name
     boxes, scores, clss = [], [], []
     for ty in ys:

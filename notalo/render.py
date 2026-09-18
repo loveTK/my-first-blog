@@ -10,14 +10,15 @@ PAD = 2
 
 @functools.lru_cache(maxsize=32)
 def font(size):
-    # Noto Sans CJK 하나로 ko/ja/zh 다 커버(한글+가나+한자). 라틴(en/it/de)도 같은 폰트에 포함.
-    for p in (
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-        "C:/Windows/Fonts/malgunbd.ttf",
-        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    # 나눔스퀘어 Bold: 한글+가나+라틴+♯♭ 전부 포함(확인됨). 같은 px에서 Noto보다 작게 나와 1.15배.
+    # 뒤는 폴백(Noto Sans CJK도 ko/ja/en 다 됨, 두껍고 투박함).
+    for p, k in (
+        ("/usr/share/fonts/truetype/nanum/NanumSquareB.ttf", 1.15),
+        ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 1.0),
+        ("C:/Windows/Fonts/malgunbd.ttf", 1.0),
     ):
         if os.path.exists(p):
-            return ImageFont.truetype(p, int(size))
+            return ImageFont.truetype(p, int(size * k))
     return ImageFont.load_default()  # ponytail: 폰트 없으면 □로 나옴
 
 

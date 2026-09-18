@@ -7,6 +7,8 @@ import json
 import os
 import sys
 
+import cv2
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import core  # noqa: E402
 
@@ -57,7 +59,8 @@ if __name__ == "__main__":
 
         det_notes = []
         for page in core.load_pages(img_path):
-            det_notes += [n for n in core.detect_notes(page)
+            f = cv2.imread(img_path).shape[0] / page.shape[0]  # load_pages가 큰 페이지를 축소함 → 정답(원본 px) 좌표계로 되돌림
+            det_notes += [n for n in ({**n, "x": n["x"] * f, "y": n["y"] * f} for n in core.detect_notes(page))
                           if not any(x1 <= n["x"] <= x2 and y1 <= n["y"] <= y2 for x1, y1, x2, y2 in ignore)]
 
         r = score_one(gt_notes, det_notes)

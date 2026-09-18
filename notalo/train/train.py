@@ -1,6 +1,7 @@
 """YOLOv8n 학습 → ONNX 내보내기. 사용: py -3 train/train.py <data.yaml> [epochs] [fraction] [resume]
 결과: notalo/weights/notes.onnx (서빙은 onnxruntime만 씀, torch 불필요).
-나쁜 스캔(번짐·얼룩·누런 종이)까지 잡으려면 학습 전에 train/degrade.py로 열화 타일을 섞는다 — train/README.md 참고."""
+나쁜 스캔(번짐·얼룩·누런 종이)까지 잡으려면 학습 전에 train/degrade.py로 열화 타일을 섞는다 — train/README.md 참고.
+학습 뒤 train/quantize.py 로 int8 변환해야 서빙 속도가 나온다(fp32 그대로 배포하면 2배 느림)."""
 import os
 import shutil
 import sys

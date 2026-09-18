@@ -31,6 +31,9 @@ python train/degrade.py train/ds --ratio 0.5 --copies 1
 # 3) 학습 (GPU면 train.py의 m.train(...)에 device=0 추가). 중간에 죽으면 끝에 resume
 python train/train.py train/ds/data.yaml 12
 
+# 3b) int8 양자화(제자리). CPU 추론 약 2배 빠름, 정확도 동일. 이걸 빼먹으면 서버가 느려진다
+python train/quantize.py
+
 # 4) 정확도 게이트 — 반드시 통과해야 배포 (기준: 음높이 ≥98%, 누락 ≤1%, 오탐 ≤0.5%)
 python tests/test_accuracy.py
 

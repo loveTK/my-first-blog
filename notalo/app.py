@@ -20,6 +20,7 @@ import pay
 import render
 
 app = FastAPI()
+core._session()  # ONNX 모델을 기동 때 미리 로드(첫 변환에서 1~3초 안 기다리게)
 app.include_router(auth.router)
 app.include_router(pay.router)
 auth.rate_limit = lambda request: _check_rate_limit(request.client.host)
