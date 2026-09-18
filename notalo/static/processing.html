@@ -38,6 +38,10 @@ gtag('config', 'G-YKTS1ZLM3G');
   </nav>
 </header>
 
+<div class="scan-wrap" id="scan-wrap" hidden>
+  <div class="scan-bg" id="scan-bg"></div>
+  <div class="scan-line"></div>
+</div>
 <main class="proc">
   <div class="ad-slot">
     <span class="ad-label" data-i18n="processing.ad_label">Advertisement</span>
@@ -188,9 +192,14 @@ const credits = async () => { try { const d = await (await fetch('/credits')).js
 // ---------- job 폴링 ----------
 const jobId = new URLSearchParams(location.search).get('job');
 const t0 = Date.now();
+// 업로드 화면에서 남겨둔 축소 미리보기가 있으면 흐릿한 배경 + 스캔선으로 보여줌(내 브라우저에만 있던 것, 한 번 쓰고 바로 지움)
+try {
+  const bg = sessionStorage.getItem('notalo_bg');
+  if (bg) { $('scan-bg').style.backgroundImage = `url(${bg})`; show($('scan-wrap'), true); sessionStorage.removeItem('notalo_bg'); }
+} catch (_) {}
 // 진행률: 서버가 준 완료 페이지 수 + 현재 페이지 안에서의 추정치(페이지당 ~8초 기준, 90%까지만 기어감)
 let done = 0, total = 0, pageT0 = Date.now(), pct = 0;
-const PER_PAGE_MS = 8000, TIPS = 6;
+const PER_PAGE_MS = 8000, TIP_COUNT = 6, QUOTE_COUNT = 30;
 const tick = () => {
   const within = total ? 0.9 * (1 - Math.exp(-(Date.now() - pageT0) / PER_PAGE_MS)) : 0;
   const target = total ? 100 * (done + within) / total : 15 * (1 - Math.exp(-(Date.now() - t0) / 4000));
@@ -200,8 +209,14 @@ const tick = () => {
   document.title = `${Math.round(pct)}% — Notalo`;
 };
 const timer = setInterval(tick, 250);
-let tipN = Math.floor(Math.random() * TIPS);
-const showTip = () => { $('tip').textContent = t(`processing.tip.${tipN % TIPS + 1}`); tipN++; };
+// 팁 6개 + 명언 30개를 섞어서 순서대로(무작위 순열, 연속 반복 없음). 명언이 훨씬 많아 팁만 계속 나오지 않게 1:1로 끼워 넣음
+const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const tipKeys = shuffle(Array.from({ length: TIP_COUNT }, (_, i) => `processing.tip.${i + 1}`));
+const quoteKeys = shuffle(Array.from({ length: QUOTE_COUNT }, (_, i) => `processing.quote.${i + 1}`));
+const deck = [];
+for (let i = 0; i < quoteKeys.length; i++) { deck.push(quoteKeys[i]); if (i < tipKeys.length) deck.push(tipKeys[i]); }
+let tipN = 0;
+const showTip = () => { $('tip').textContent = t(deck[tipN % deck.length]); tipN++; };
 setInterval(showTip, 5000);
 const showError = msg => { clearInterval(timer); document.title = 'Notalo'; gtag('event', 'convert_error', { stage: 'process', reason: (msg || 'no_staff').slice(0, 80) }); show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
 const poll = async () => {

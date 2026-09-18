@@ -222,8 +222,24 @@ const pick = f => {
     if (f.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); return; }
     file.files = f;
   }
-  const n = file.files[0]?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n);
+  const picked = file.files[0], n = picked?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n);
   if (n) gtag('event', 'file_selected', { file_type: n.split('.').pop().toLowerCase() });
+  saveBgPreview(picked);
+};
+
+// ---------- 처리 화면 배경용 썸네일(이미지 파일만, 내 브라우저 안에만 저장, 처리 화면에서 바로 지움) ----------
+const saveBgPreview = f => {
+  try { sessionStorage.removeItem('notalo_bg'); } catch (_) {}
+  if (!f || !/^image\/(jpeg|png)$/.test(f.type)) return;  // PDF는 클라이언트에서 렌더할 방법이 없어 생략
+  const img = new Image();
+  img.onload = () => {
+    const scale = Math.min(1, 480 / img.width);
+    const c = document.createElement('canvas'); c.width = img.width * scale; c.height = img.height * scale;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    try { sessionStorage.setItem('notalo_bg', c.toDataURL('image/jpeg', 0.55)); } catch (_) {}  // 용량 초과 시 그냥 무시(배경 없이 진행)
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(f);
 };
 drop.onclick = () => file.click();
 $('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
