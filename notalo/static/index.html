@@ -67,7 +67,6 @@ gtag('config', 'G-YKTS1ZLM3G');
     <div class="demo-opts">
       <div class="field"><label for="demo-lang" data-i18n="demo.lang_label">Label language</label>
         <select id="demo-lang">
-          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option>
           <option value="en" selected data-i18n="tool.lang_en">Letter names (C D E)</option>
           <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option>
           <option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option>
@@ -98,6 +97,7 @@ gtag('config', 'G-YKTS1ZLM3G');
       <strong data-i18n="tool.drop_strong">Drop your sheet music here or click to browse</strong>
       <p class="file" id="fname"></p>
       <span class="hint" data-i18n="tool.drop_hint">PDF, JPG, PNG · up to 20MB</span>
+      <span class="hint clean" data-i18n="tool.clean_hint">Best results with clean, printed scores. Blurry photos, ink bleed or hand-drawn scans may miss notes.</span>
       <span class="sw" data-i18n="tool.drop_sw">Click to choose a different file</span>
       <input type="file" name="file" id="file" accept=".pdf,.jpg,.jpeg,.png" required>
     </div>
@@ -105,7 +105,7 @@ gtag('config', 'G-YKTS1ZLM3G');
     <div class="opts">
       <div><label for="lang" data-i18n="tool.lang_label">Label language</label>
         <select name="lang" id="lang">
-          <option value="ko" data-i18n="tool.lang_ko">Solfège, Korean (도레미)</option><option value="en" data-i18n="tool.lang_en">Letter names (C D E)</option>
+          <option value="en" data-i18n="tool.lang_en">Letter names (C D E)</option>
           <option value="it" data-i18n="tool.lang_it">Solfège, Italian (Do Re Mi)</option><option value="ja" data-i18n="tool.lang_ja">Solfège, Japanese (ドレミ)</option><option value="de" data-i18n="tool.lang_de">Letter names, German (C D E H)</option>
         </select></div>
       <div><label for="position" data-i18n="tool.pos_label">Label position</label>
@@ -131,7 +131,7 @@ gtag('config', 'G-YKTS1ZLM3G');
     <tbody>
       <tr><td data-i18n="compare.row_input">Input format</td><td data-i18n="compare.notalo_input">PDF, JPG, PNG</td><td data-i18n="compare.other_input">MusicXML</td></tr>
       <tr><td data-i18n="compare.row_prep">Prep needed</td><td data-i18n="compare.notalo_prep">None — upload the file as-is</td><td data-i18n="compare.other_prep">Export to MusicXML first (e.g. via MuseScore)</td></tr>
-      <tr><td data-i18n="compare.row_label">Labeling</td><td data-i18n="compare.notalo_label">Solfège + letter names, 5 languages</td><td data-i18n="compare.other_label">Varies by tool (usually letter names)</td></tr>
+      <tr><td data-i18n="compare.row_label">Labeling</td><td data-i18n="compare.notalo_label">Solfège + letter names, 4 languages</td><td data-i18n="compare.other_label">Varies by tool (usually letter names)</td></tr>
       <tr><td data-i18n="compare.row_free">Free usage</td><td data-i18n="compare.notalo_free">Unlimited — completely free, supported by ads</td><td data-i18n="compare.other_free">Varies (often limited by saved-score count)</td></tr>
       <tr><td data-i18n="compare.row_save">Save/share</td><td data-i18n="compare.notalo_save">Not applicable — files deleted after processing</td><td data-i18n="compare.other_save">Some tools offer score libraries and sharing</td></tr>
       <tr><td data-i18n="compare.row_best">Best for</td><td data-i18n="compare.notalo_best">Sheet music you only have as a photo, scan, or print</td><td data-i18n="compare.other_best">Musicians already working in MusicXML</td></tr>
@@ -148,7 +148,8 @@ gtag('config', 'G-YKTS1ZLM3G');
     <details class="faq-item"><summary data-i18n="faq.q1">What file formats are supported?</summary><p data-i18n="faq.a1">PDF, JPG, and PNG — sheet music files up to 20MB.</p></details>
     <details class="faq-item"><summary data-i18n="faq.q2">Do I need MusicXML or notation software?</summary><p data-i18n="faq.a2">No. Just upload a photo or PDF of your sheet music as-is — Notalo detects noteheads directly from the image.</p></details>
     <details class="faq-item"><summary data-i18n="faq.q3">Is it free?</summary><p data-i18n="faq.a3">Yes — completely free, with no sign-up, credits, or payment required. The site is supported by ads.</p></details>
-    <details class="faq-item"><summary data-i18n="faq.q4">What note-name languages are supported?</summary><p data-i18n="faq.a4">Korean (도레미), English (C D E), Italian (Do Re Mi), Japanese (ドレミ), and German (C D E H).</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q4">What note-name languages are supported?</summary><p data-i18n="faq.a4">English (C D E), Italian (Do Re Mi), Japanese (ドレミ), and German (C D E H).</p></details>
+    <details class="faq-item"><summary data-i18n="faq.q6">Which scores work best?</summary><p data-i18n="faq.a6">Clean, printed sheet music: a PDF exported from notation software or a sharp, straight scan. The model was trained on printed notation, so smudged copies, faded prints, hand-drawn scans and photos taken at an angle can miss or mislabel notes. If you have the original PDF, upload that.</p></details>
     <details class="faq-item"><summary data-i18n="faq.q5">Are my files stored?</summary><p data-i18n="faq.a5">No. Uploaded files and results are deleted immediately after processing.</p></details>
   </div>
 </section>
@@ -187,7 +188,7 @@ const show = (el, on) => { el.hidden = !on; };
 
 // ---------- i18n ----------
 const LANGS = { en:"English", ko:"한국어", es:"Español", ja:"日本語", de:"Deutsch", it:"Italiano", fr:"Français", pt:"Português" };
-const HERO_LANG = { ko:'ko', en:'en', ja:'ja', de:'de', it:'it', es:'it', fr:'it', pt:'it' };  // 스페인·프랑스·포르투갈은 도레미(이탈리아식)
+const HERO_LANG = { ko:'it', en:'en', ja:'ja', de:'de', it:'it', es:'it', fr:'it', pt:'it' };  // 스페인·프랑스·포르투갈은 도레미(이탈리아식)
 let T = {};
 const t = (k, vars) => { let s = T[k] || k; if (vars) for (const key in vars) s = s.split(`{${key}}`).join(vars[key]); return s; };
 const applyI18n = () => {

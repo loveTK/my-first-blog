@@ -45,9 +45,11 @@ gtag('config', 'G-YKTS1ZLM3G');
   </div>
 
   <div id="busy">
-    <div class="spin" aria-hidden="true"></div>
     <h1 data-i18n="processing.title">Converting your sheet music…</h1>
-    <p class="sub" data-i18n="processing.sub">This usually takes about 10 seconds.</p>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><div id="bar-fill"></div></div>
+    <p class="sub" id="pct">0%</p>
+    <p class="sub" data-i18n="processing.sub">Usually 5–20 seconds per page. Keep this tab open.</p>
+    <p class="tip-box" id="tip"></p>
   </div>
 
   <div id="err" hidden>
@@ -123,6 +125,7 @@ const loadLang = async code => {
   currentLang = code;
   document.documentElement.lang = code;
   applyI18n();
+  showTip();
 };
 const sw = $('lang-switch');
 Object.entries(LANGS).forEach(([code, label]) => { const o = document.createElement('option'); o.value = code; o.textContent = label; sw.append(o); });
@@ -185,13 +188,29 @@ const credits = async () => { try { const d = await (await fetch('/credits')).js
 // ---------- job 폴링 ----------
 const jobId = new URLSearchParams(location.search).get('job');
 const t0 = Date.now();
-const showError = msg => { gtag('event', 'convert_error', { stage: 'process', reason: (msg || 'no_staff').slice(0, 80) }); show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
+// 진행률: 서버가 준 완료 페이지 수 + 현재 페이지 안에서의 추정치(페이지당 ~8초 기준, 90%까지만 기어감)
+let done = 0, total = 0, pageT0 = Date.now(), pct = 0;
+const PER_PAGE_MS = 8000, TIPS = 6;
+const tick = () => {
+  const within = total ? 0.9 * (1 - Math.exp(-(Date.now() - pageT0) / PER_PAGE_MS)) : 0;
+  const target = total ? 100 * (done + within) / total : 15 * (1 - Math.exp(-(Date.now() - t0) / 4000));
+  pct = Math.max(pct, Math.min(99, target));
+  $('bar-fill').style.width = pct + '%'; $('bar').setAttribute('aria-valuenow', Math.round(pct));
+  $('pct').textContent = Math.round(pct) + '%' + (total ? ` · ${t('processing.pages', { done: Math.min(done + 1, total), total })}` : '');
+  document.title = `${Math.round(pct)}% — Notalo`;
+};
+const timer = setInterval(tick, 250);
+let tipN = Math.floor(Math.random() * TIPS);
+const showTip = () => { $('tip').textContent = t(`processing.tip.${tipN % TIPS + 1}`); tipN++; };
+setInterval(showTip, 5000);
+const showError = msg => { clearInterval(timer); document.title = 'Notalo'; gtag('event', 'convert_error', { stage: 'process', reason: (msg || 'no_staff').slice(0, 80) }); show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
 const poll = async () => {
   if (!jobId) { showError(t('tool.status_fail')); return; }
   try {
     const r = await fetch(`/jobs/${jobId}/status`);
     if (!r.ok) { showError(t('tool.status_no_staff')); return; }
     const d = await r.json();
+    if (d.done !== done || d.total !== total) { done = d.done; total = d.total; pageT0 = Date.now(); }
     if (d.status === 'processing') { setTimeout(poll, 1200); return; }
     if (d.status === 'error') { showError(d.detail || t('tool.status_no_staff')); return; }
     // done
@@ -201,6 +220,7 @@ const poll = async () => {
     const b = await rr.blob(), u = URL.createObjectURL(b);
     const savedName = localStorage.getItem('notalo_filename') || 'sheet';
     const dl = $('dl'); dl.href = u; dl.download = savedName.replace(/\.(\w+)$/, '_plus.$1') || 'result';
+    clearInterval(timer); pct = 100; $('bar-fill').style.width = '100%'; $('pct').textContent = '100%'; document.title = '✓ Notalo';
     show($('busy'), false); show($('result'), true); show($('pdfnote'), isPdf);
     $('img').src = isPdf ? rr.headers.get('X-Preview') : u; show($('img'), true); show(dl, true);
     gtag('event', 'convert_done', { file_type: isPdf ? 'pdf' : 'image', seconds: Math.round((Date.now() - t0) / 1000) });

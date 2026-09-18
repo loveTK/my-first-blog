@@ -119,8 +119,12 @@ def _sweep_jobs():
 
 def _run_job(job_id, src, ext, lang, position, mode):
     try:
-        imgs = [render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
-                for p in core.load_pages(src)]
+        pages = core.load_pages(src)
+        _jobs[job_id]["total"] = len(pages)
+        imgs = []
+        for p in pages:
+            imgs.append(render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode)))
+            _jobs[job_id]["done"] = len(imgs)  # 진행률 막대용
         tmp = os.path.dirname(src)
         out = os.path.join(tmp, "out" + ext)
         if ext == ".pdf":
@@ -152,7 +156,7 @@ async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"),
         f.write(data)
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     job_id = secrets.token_urlsafe(16)
-    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time()}
+    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0}
     threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode), daemon=True).start()
     return {"id": job_id}
 
@@ -162,7 +166,7 @@ def job_status(job_id: str):
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(404)
-    return {"status": job["status"]}
+    return {"status": job["status"], "done": job["done"], "total": job["total"]}
 
 
 @app.get("/jobs/{job_id}/result")
