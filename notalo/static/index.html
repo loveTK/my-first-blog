@@ -222,6 +222,7 @@ const pick = f => {
     file.files = f;
   }
   const n = file.files[0]?.name || ''; fname.textContent = n; drop.classList.toggle('has', !!n);
+  if (n) gtag('event', 'file_selected', { file_type: n.split('.').pop().toLowerCase() });
 };
 drop.onclick = () => file.click();
 $('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
@@ -320,6 +321,7 @@ $('f').onsubmit = async e => {
   if (!file.files[0]) { s.className = 'status err'; s.textContent = t('tool.status_pick_file'); return; }
   if (file.files.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); return; }
   go.disabled = true; s.className = 'status'; s.textContent = t('tool.status_uploading');
+  gtag('event', 'convert_start', { file_type: file.files[0].name.split('.').pop().toLowerCase(), label_lang: $('lang').value, position: $('position').value, layout: $('mode').value, ui_lang: currentLang });
   try {
     const r = await fetch('/jobs', { method: 'POST', body: new FormData($('f')) });
     if (!r.ok) {
@@ -331,6 +333,7 @@ $('f').onsubmit = async e => {
     localStorage.setItem('notalo_filename', file.files[0].name);
     location.href = `/processing?job=${id}`;
   } catch (err) {
+    gtag('event', 'convert_error', { stage: 'upload', reason: err.message.slice(0, 80) });
     s.className = 'status err'; s.textContent = err.message; go.disabled = false;
   }
 };

@@ -184,7 +184,8 @@ const credits = async () => { try { const d = await (await fetch('/credits')).js
 
 // ---------- job 폴링 ----------
 const jobId = new URLSearchParams(location.search).get('job');
-const showError = msg => { show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
+const t0 = Date.now();
+const showError = msg => { gtag('event', 'convert_error', { stage: 'process', reason: (msg || 'no_staff').slice(0, 80) }); show($('busy'), false); show($('err'), true); $('err-msg').textContent = msg || t('tool.status_no_staff'); };
 const poll = async () => {
   if (!jobId) { showError(t('tool.status_fail')); return; }
   try {
@@ -202,6 +203,8 @@ const poll = async () => {
     const dl = $('dl'); dl.href = u; dl.download = savedName.replace(/\.(\w+)$/, '_plus.$1') || 'result';
     show($('busy'), false); show($('result'), true); show($('pdfnote'), isPdf);
     $('img').src = isPdf ? rr.headers.get('X-Preview') : u; show($('img'), true); show(dl, true);
+    gtag('event', 'convert_done', { file_type: isPdf ? 'pdf' : 'image', seconds: Math.round((Date.now() - t0) / 1000) });
+    dl.onclick = () => gtag('event', 'download', { file_type: isPdf ? 'pdf' : 'image' });
   } catch (_) { showError(t('tool.status_no_staff')); }
 };
 
