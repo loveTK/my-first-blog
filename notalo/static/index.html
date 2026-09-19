@@ -63,7 +63,7 @@ gtag('config', 'G-YKTS1ZLM3G');
     </div>
   </div>
   <figure>
-    <img id="hero-img" src="/hero/sample_en.png" alt="Piano sheet music with note names added in red (right hand) and blue (left hand)" width="1720" height="1174">
+    <img id="hero-img" src="/hero/sample_en.png?v=2" alt="Piano sheet music with note names added in red (right hand) and blue (left hand)" width="1720" height="1174">
     <figcaption data-i18n="hero.caption">Actual result. Right hand in red, left hand in blue.</figcaption>
   </figure>
 </section>
@@ -72,7 +72,7 @@ gtag('config', 'G-YKTS1ZLM3G');
   <h2 class="sec-title" data-i18n="demo.title">See it in action</h2>
   <p class="sec-sub" data-i18n="demo.sub">No upload needed yet — change the options below and watch the sample update.</p>
   <div class="demo-grid">
-    <div class="demo-frame"><img id="demo-img" src="/demo/sample_en_below.png" alt="Sample sheet music with solfège labels added below each note"></div>
+    <div class="demo-frame"><img id="demo-img" src="/demo/sample_en_below.png?v=2" alt="Sample sheet music with solfège labels added below each note"></div>
     <div class="demo-opts">
       <div class="field"><label for="demo-lang" data-i18n="demo.lang_label">Label language</label>
         <select id="demo-lang">
@@ -218,7 +218,7 @@ const loadLang = async code => {
   T = await r.json();
   currentLang = code;
   document.documentElement.lang = code;
-  $('hero-img').src = `/hero/sample_${HERO_LANG[code] || 'en'}.png`;
+  $('hero-img').src = `/hero/sample_${HERO_LANG[code] || 'en'}.png?v=2`;
   applyI18n();
   refreshDynamicText();
 };
@@ -276,7 +276,7 @@ const setUser = email => { show($('user'), !!email); show($('logout-btn'), !!ema
 
 // ---------- 데모 섹션 (미리 생성된 정적 이미지 교체) ----------
 const demoImg = $('demo-img'), demoLang = $('demo-lang'), demoPos = $('demo-pos');
-const updateDemo = () => { demoImg.src = `/demo/sample_${demoLang.value}_${demoPos.value}.png`; };
+const updateDemo = () => { demoImg.src = `/demo/sample_${demoLang.value}_${demoPos.value}.png?v=2`; };
 demoLang.onchange = updateDemo; demoPos.onchange = updateDemo;
 
 // ---------- 로그인 ----------
