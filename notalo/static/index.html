@@ -12,17 +12,26 @@ gtag('config', 'G-YKTS1ZLM3G');
 </script>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1044528124208901" crossorigin="anonymous"></script>
 <meta name="google-adsense-account" content="ca-pub-1044528124208901">
-<title>Notalo — Add Note Names to Sheet Music Instantly</title>
-<meta name="description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Completely free.">
-<meta property="og:title" content="Notalo — Add Note Names to Sheet Music Instantly">
-<meta property="og:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Completely free.">
-<meta name="twitter:title" content="Notalo — Add Note Names to Sheet Music Instantly">
-<meta name="twitter:description" content="Upload a PDF or photo of sheet music and get note names or solfège added instantly. No MusicXML, no software. Completely free.">
+<title>Add Note Names to Sheet Music Free — Notalo</title>
+<meta name="description" content="Free tool that adds note names or solfège (Do Re Mi) to any sheet music. Upload a photo or PDF — no MusicXML, no notation software. Try Notalo now.">
+<meta property="og:title" content="Add Note Names to Sheet Music Free — Notalo">
+<meta property="og:description" content="Free tool that adds note names or solfège (Do Re Mi) to any sheet music. Upload a photo or PDF — no MusicXML, no notation software. Try Notalo now.">
+<meta name="twitter:title" content="Add Note Names to Sheet Music Free — Notalo">
+<meta name="twitter:description" content="Free tool that adds note names or solfège (Do Re Mi) to any sheet music. Upload a photo or PDF — no MusicXML, no notation software. Try Notalo now.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="canonical" href="https://notalo.xyz/">
+<link rel="alternate" hreflang="en" href="https://notalo.xyz/">
+<link rel="alternate" hreflang="ko" href="https://notalo.xyz/?lang=ko">
+<link rel="alternate" hreflang="ja" href="https://notalo.xyz/?lang=ja">
+<link rel="alternate" hreflang="de" href="https://notalo.xyz/?lang=de">
+<link rel="alternate" hreflang="it" href="https://notalo.xyz/?lang=it">
+<link rel="alternate" hreflang="es" href="https://notalo.xyz/?lang=es">
+<link rel="alternate" hreflang="fr" href="https://notalo.xyz/?lang=fr">
+<link rel="alternate" hreflang="pt" href="https://notalo.xyz/?lang=pt">
+<link rel="alternate" hreflang="x-default" href="https://notalo.xyz/">
 <meta property="og:url" content="https://notalo.xyz/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -198,6 +207,8 @@ const applyI18n = () => {
   });
 };
 const detectLang = () => {
+  const urlLang = new URLSearchParams(location.search).get('lang');  // hreflang이 가리키는 주소(?lang=ko 등)가 실제로 그 언어로 뜨게 함
+  if (urlLang && LANGS[urlLang]) return urlLang;
   const saved = localStorage.getItem('notalo_lang');
   return (saved && LANGS[saved]) ? saved : 'en';  // 기본은 항상 영어. 브라우저 언어로 자동 전환하지 않음
 };
@@ -213,7 +224,13 @@ const loadLang = async code => {
 };
 const sw = $('lang-switch');
 Object.entries(LANGS).forEach(([code, label]) => { const o = document.createElement('option'); o.value = code; o.textContent = label; sw.append(o); });
-sw.onchange = () => { localStorage.setItem('notalo_lang', sw.value); loadLang(sw.value); };
+sw.onchange = () => {
+  localStorage.setItem('notalo_lang', sw.value);
+  loadLang(sw.value);
+  const url = new URL(location);  // 주소창에도 반영 → 공유 링크·hreflang 주소가 실제로 그 언어로 뜸
+  if (sw.value === 'en') url.searchParams.delete('lang'); else url.searchParams.set('lang', sw.value);
+  history.replaceState(null, '', url);
+};
 
 // ---------- 업로드 ----------
 const drop = $('drop'), file = $('file'), fname = $('fname'), s = $('s'), go = $('go');
