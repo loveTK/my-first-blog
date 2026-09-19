@@ -9,6 +9,10 @@
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1F7A4A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Notalo">
 <link rel="canonical" href="https://notalo.xyz/privacy.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,6 +28,7 @@
 .legal a{color:var(--accent)}
 .legal .ko{margin-top:64px;padding-top:32px;border-top:1px solid var(--line)}
 </style>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 <div class="wrap">
 <header>
   <a class="brand" href="/">Notalo</a>
