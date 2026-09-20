@@ -10,15 +10,34 @@ MAX_SIDE = 3500  # 페이지 긴 변 상한(px). 처리시간은 픽셀 수에 �
 def load_pages(path):
     """PDF/JPG/PNG → RGB numpy 페이지 리스트. 기울어진 스캔은 여기서 바로 세움(출력 악보도 같이 바로 선다)."""
     if path.lower().endswith(".pdf"):
-        from pdf2image import convert_from_path, pdfinfo_from_path  # poppler 필요
+        return _PdfPages(path)
+    bgr = cv2.imread(path)
+    assert bgr is not None, f"못 읽음: {path}"
+    return [deskew(shrink(cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)))]
+
+
+class _PdfPages:
+    """PDF 페이지를 요청할 때마다 한 장만 렌더하는 시퀀스(len/인덱스/for 지원).
+    전체를 한 번에 올리면 20페이지에 1GB → micro 서버(1GB)가 OOM으로 죽고 진행 중 요청이 'Failed to fetch'로 끝났음."""
+
+    def __init__(self, path):
+        from pdf2image import pdfinfo_from_path  # poppler 필요
+        info = pdfinfo_from_path(path)
+        self.path, self.n = path, int(info["Pages"])
         # 긴 변 MAX_SIDE px 넘지 않게 dpi를 줄여서 렌더(큰 스캔 PDF는 200dpi면 6000px+ → 처리시간 3배). A4는 200dpi 그대로
-        pts = max(float(v) for v in pdfinfo_from_path(path)["Page size"].split(" pts")[0].split(" x "))
-        pages = [np.array(p.convert("RGB")) for p in convert_from_path(path, dpi=min(200, MAX_SIDE * 72 / pts))]
-    else:
-        bgr = cv2.imread(path)
-        pages = [] if bgr is None else [cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)]
-    assert pages, f"못 읽음: {path}"
-    return [deskew(shrink(p)) for p in pages]
+        pts = max(float(v) for v in info["Page size"].split(" pts")[0].split(" x "))
+        self.dpi = min(200, MAX_SIDE * 72 / pts)
+        assert self.n > 0, f"못 읽음: {path}"
+
+    def __len__(self):
+        return self.n
+
+    def __getitem__(self, i):
+        if not 0 <= i < self.n:
+            raise IndexError(i)
+        from pdf2image import convert_from_path
+        p = convert_from_path(self.path, dpi=self.dpi, first_page=i + 1, last_page=i + 1)[0]
+        return deskew(shrink(np.array(p.convert("RGB"))))
 
 
 def shrink(page):

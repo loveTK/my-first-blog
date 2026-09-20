@@ -88,16 +88,11 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
     src, out = os.path.join(tmp, "in" + ext), os.path.join(tmp, "out" + ext)
     with open(src, "wb") as f:
         f.write(data)
-    imgs = [render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
-            for p in core.load_pages(src)]
-    if ext == ".pdf":
-        imgs[0].save(out, save_all=True, append_images=imgs[1:])
-    else:
-        imgs[0].save(out)
+    preview = _process(src, out, ext, lang, position, mode)
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     resp = FileResponse(out, filename=name, background=BackgroundTask(shutil.rmtree, tmp))
-    if ext == ".pdf":
-        resp.headers["X-Preview"] = _preview(imgs[0])
+    if preview:
+        resp.headers["X-Preview"] = preview
     if not auth.spend(request, resp):
         raise HTTPException(402, NO_CREDIT)
     return resp
@@ -117,21 +112,26 @@ def _sweep_jobs():
             del _jobs[jid]
 
 
+def _process(src, out, ext, lang, position, mode, progress=lambda done, total: None):
+    """페이지 한 장씩: 렌더 → 라벨 → 바로 out에 저장(PDF는 append). 결과를 메모리에 모으지 않아 페이지 수와 무관하게 메모리 일정.
+    반환: PDF면 첫 페이지 미리보기 URL, 아니면 None."""
+    pages = core.load_pages(src)
+    preview = None
+    for i, p in enumerate(pages):
+        img = render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
+        img.save(out, append=(ext == ".pdf" and i > 0))  # PIL PDF: append=True면 기존 파일에 페이지 추가
+        if i == 0 and ext == ".pdf":
+            preview = _preview(img)
+        progress(i + 1, len(pages))
+    return preview
+
+
 def _run_job(job_id, src, ext, lang, position, mode):
     try:
-        pages = core.load_pages(src)
-        _jobs[job_id]["total"] = len(pages)
-        imgs = []
-        for p in pages:
-            imgs.append(render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode)))
-            _jobs[job_id]["done"] = len(imgs)  # 진행률 막대용
-        tmp = os.path.dirname(src)
-        out = os.path.join(tmp, "out" + ext)
-        if ext == ".pdf":
-            imgs[0].save(out, save_all=True, append_images=imgs[1:])
-        else:
-            imgs[0].save(out)
-        preview = _preview(imgs[0]) if ext == ".pdf" else None
+        def progress(done, total):
+            _jobs[job_id].update(done=done, total=total)  # 진행률 막대용
+        out = os.path.join(os.path.dirname(src), "out" + ext)
+        preview = _process(src, out, ext, lang, position, mode, progress)
         _jobs[job_id].update(status="done", out=out, preview=preview)
     except Exception:
         shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
