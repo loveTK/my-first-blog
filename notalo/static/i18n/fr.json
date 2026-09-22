@@ -56,7 +56,7 @@
  "result.pdfnote": "Seule la première page est affichée — le reste se trouve dans le fichier téléchargé.",
  "result.dl": "Télécharger le résultat",
  "result.midi_title": "MIDI d'entraînement",
- "result.midi_note": "Joue les notes détectées dans l'ordre, un temps chacune — le rythme n'est pas reproduit. Pour vérifier les hauteurs et chanter dessus.",
+ "result.midi_note": "Joue les notes détectées avec leur durée (de la ronde à la double croche, pointées). Les silences et liaisons ne sont pas détectés, le rythme peut donc se décaler : pour vérifier les hauteurs et chanter dessus.",
  "result.midi_bpm": "Tempo (BPM)",
  "result.midi_btn": "Télécharger le MIDI",
  "compare.title": "Notalo face aux outils basés sur MusicXML — deux façons d'ajouter les noms des notes",

@@ -56,7 +56,7 @@
  "result.pdfnote": "Mostrando solo la primera página — el resto está en el archivo descargado.",
  "result.dl": "Descargar resultado",
  "result.midi_title": "MIDI de práctica",
- "result.midi_note": "Reproduce las notas detectadas en orden, un tiempo cada una — el ritmo no se reproduce. Para comprobar las alturas y cantar encima.",
+ "result.midi_note": "Reproduce las notas detectadas con su duración (de redonda a semicorchea, con puntillo). Los silencios y ligaduras no se detectan, así que el ritmo puede desfasarse: para comprobar las alturas y cantar encima.",
  "result.midi_bpm": "Tempo (BPM)",
  "result.midi_btn": "Descargar MIDI",
  "compare.title": "Notalo frente a herramientas basadas en MusicXML — dos formas de añadir nombres de notas",

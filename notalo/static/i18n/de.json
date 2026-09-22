@@ -56,7 +56,7 @@
  "result.pdfnote": "Nur die erste Seite wird angezeigt — der Rest ist in der heruntergeladenen Datei.",
  "result.dl": "Ergebnis herunterladen",
  "result.midi_title": "Übungs-MIDI",
- "result.midi_note": "Spielt die erkannten Noten der Reihe nach, je ein Schlag — der Rhythmus wird nicht wiedergegeben. Zum Prüfen der Tonhöhen und Mitsingen.",
+ "result.midi_note": "Spielt die erkannten Noten mit ihren Längen (ganze bis Sechzehntel, punktiert). Pausen und Haltebögen werden nicht erkannt, das Timing kann daher verrutschen – zum Prüfen der Tonhöhen und Mitsingen.",
  "result.midi_bpm": "Tempo (BPM)",
  "result.midi_btn": "MIDI herunterladen",
  "compare.title": "Notalo vs. MusicXML-basierte Tools — zwei Wege zu Notennamen",

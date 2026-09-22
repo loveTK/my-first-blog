@@ -56,7 +56,7 @@
  "result.pdfnote": "Viene mostrata solo la prima pagina — il resto è nel file scaricato.",
  "result.dl": "Scarica il risultato",
  "result.midi_title": "MIDI per esercitarsi",
- "result.midi_note": "Riproduce le note rilevate in ordine, un battito ciascuna — il ritmo non viene riprodotto. Per controllare le altezze e cantare insieme.",
+ "result.midi_note": "Riproduce le note rilevate con la loro durata (dalla semibreve alla semicroma, puntate). Pause e legature non vengono rilevate, quindi il tempo può sfasarsi: per controllare le altezze e cantare insieme.",
  "result.midi_bpm": "Tempo (BPM)",
  "result.midi_btn": "Scarica MIDI",
  "compare.title": "Notalo vs. strumenti basati su MusicXML — due modi per aggiungere i nomi delle note",

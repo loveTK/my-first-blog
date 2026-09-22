@@ -56,7 +56,7 @@
  "result.pdfnote": "Showing the first page only — the rest are in the downloaded file.",
  "result.dl": "Download result",
  "result.midi_title": "Practice MIDI",
- "result.midi_note": "Plays the detected notes in order, one beat each — rhythm is not reproduced. For checking pitches and singing along.",
+ "result.midi_note": "Plays the detected notes with their lengths (whole to sixteenth, dotted). Rests and ties aren't detected, so timing can drift — for checking pitches and singing along.",
  "result.midi_bpm": "Tempo (BPM)",
  "result.midi_btn": "Download MIDI",
  "compare.title": "Notalo vs. MusicXML-Based Tools — Two Ways to Add Note Names",

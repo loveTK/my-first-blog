@@ -56,7 +56,7 @@
  "result.pdfnote": "Mostrando apenas a primeira página — o restante está no arquivo baixado.",
  "result.dl": "Baixar resultado",
  "result.midi_title": "MIDI de prática",
- "result.midi_note": "Toca as notas detectadas em ordem, um tempo cada — o ritmo não é reproduzido. Para conferir as alturas e cantar junto.",
+ "result.midi_note": "Toca as notas detectadas com a sua duração (de semibreve a semicolcheia, pontuadas). Pausas e ligaduras não são detectadas, por isso o tempo pode desalinhar: para conferir as alturas e cantar junto.",
  "result.midi_bpm": "Andamento (BPM)",
  "result.midi_btn": "Baixar MIDI",
  "compare.title": "Notalo vs. ferramentas baseadas em MusicXML — duas formas de nomear notas",

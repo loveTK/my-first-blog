@@ -541,7 +541,7 @@ def detect_notes(page_rgb):
         outside = max(top - d["y"], d["y"] - bot)
         if outside > 0.75 * ss and not _has_ledger(ink, d["x"], d["y"], ss):
             continue  # 오선 밖인데 덧줄 없음 = 템포 표시(♩=96) 머리
-        heads.append({"x": d["x"], "y": d["y"], "staff": si, "hollow": d["cls"] != "notehead_black", "conf": d["conf"]})
+        heads.append({"x": d["x"], "y": d["y"], "staff": si, "cls": d["cls"], "conf": d["conf"]})
     # 같은 머리에 상자 2개(클래스 다른 중복 검출) → 신뢰도 높은 것만
     heads.sort(key=lambda h: -h["conf"])
     kept = []
@@ -551,10 +551,104 @@ def detect_notes(page_rgb):
     heads = kept
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
+    note_durations(ink, staves, heads, ss)
     sysid = _systems(ink, staves)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용, system은 MIDI 순서(같은 시스템의 오선은 x로 같이 읽음)
-    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
+    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "dur": h["dur"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
              "staff_top": line_y(staves[h["staff"]], 0, h["x"]), "staff_bot": line_y(staves[h["staff"]], 4, h["x"])} for h in heads]
+
+
+def _stem(on, x, y, ss):
+    """머리 옆 기둥 → (끝 y, 기둥 x). 오른쪽 위로 또는 왼쪽 아래로 2ss 넘게 이어진 세로 잉크. 없으면 None."""
+    best = None
+    for side, dy in ((1, -1), (-1, 1)):
+        for dx in range(int(0.35 * ss), int(0.8 * ss) + 1):
+            cx = x + side * dx
+            if not 0 <= cx < on.shape[1]:
+                continue
+            yy, n = int(y + dy * 0.3 * ss), 0
+            while 0 <= yy < on.shape[0] and on[yy, cx]:
+                yy += dy
+                n += 1
+            if n > 2 * ss and (best is None or n > best[0]):
+                best = (n, yy - dy, cx)
+    return best and best[1:]
+
+
+def _line_thickness(on, s):
+    """오선 줄 두께(px): 오선 구간 30개 열에서 5줄 각각의 세로 잉크 길이 중앙값(줄 y ±2행 안에서 잉크를 찾음, 기둥·마디선처럼 긴 것은 제외)."""
+    ts = []
+    for x in np.linspace(s["x0"], s["x1"], 32)[1:-1].astype(int):
+        for k in range(5):
+            y0 = int(round(line_y(s, k, x)))
+            ys = [y for y in range(max(y0 - 2, 0), min(y0 + 3, on.shape[0])) if on[y, x]]
+            if not ys:
+                continue
+            a = b = min(ys, key=lambda y: abs(y - y0))
+            while a > 0 and on[a - 1, x]:
+                a -= 1
+            while b < on.shape[0] - 1 and on[b + 1, x]:
+                b += 1
+            if b - a + 1 < 0.4 * s["space"]:
+                ts.append(b - a + 1)
+    return float(np.median(ts)) if ts else 2.0
+
+
+def _thick_runs(band, ss, t):
+    """세로 밴드의 두꺼운 가로 잉크 줄 수 = 꼬리·빔. 굽은 꼬리는 밴드 열의 30%만 차도 잉크로 봄.
+    두께 기준 = max(0.22ss, 줄 두께 t + 0.12ss): 흐린 스캔에서 굵어진 오선·덧줄(t)은 안 세고, 빔(≈0.5ss)은 셈."""
+    rows = band.mean(axis=1) > 0.3
+    n, r, L, mn = 0, 0, len(rows), max(0.22 * ss, t + 0.12 * ss)
+    while r < L:
+        if rows[r]:
+            r0 = r
+            while r < L and rows[r]:
+                r += 1
+            n += r - r0 >= mn
+        else:
+            r += 1
+    return n
+
+
+def _flags(on, x, y, ss, t):
+    """기둥 끝 쪽 2.2ss 안에서 기둥 좌/우 밴드의 두꺼운 가로 줄 = 꼬리·빔 수(8분=1, 16분=2). t: 오선 줄 두께."""
+    st = _stem(on, x, y, ss)
+    if not st:
+        return 0
+    ty, sx = st
+    top, bot = (ty, int(ty + 2.2 * ss)) if ty < y else (int(ty - 2.2 * ss), ty)
+    top, bot = max(top, 0), min(bot, on.shape[0])
+    n = 0
+    for a, b in ((int(sx + 0.25 * ss), int(sx + 0.9 * ss)), (int(sx - 0.9 * ss), int(sx - 0.25 * ss))):
+        a, b = max(a, 0), min(b, on.shape[1])
+        if b > a:
+            n = max(n, _thick_runs(on[top:bot, a:b], ss, t))  # 빔은 첫/끝 음표에서 한쪽에만 있음
+    return n
+
+
+def _dotted(on, x, y, ss):
+    """머리 오른쪽 0.8~1.9ss에 작은(0.2~0.6ss) 덩어리 = 점. 창 가장자리에 닿는 조각(옆 머리·기둥·오선)은 제외."""
+    x0, x1 = max(int(x + 0.8 * ss), 0), int(x + 1.9 * ss)
+    y0, y1 = max(int(y - 0.8 * ss), 0), int(y + 0.6 * ss)
+    crop = on[y0:y1, x0:x1].astype(np.uint8)
+    if not crop.size:
+        return False
+    n, _, st, _ = cv2.connectedComponentsWithStats(crop, connectivity=8)
+    for cx, cy, w, h, a in st[1:]:
+        if 0.2 * ss <= w <= 0.6 * ss and 0.2 * ss <= h <= 0.6 * ss and a > 0.5 * w * h and cx > 0 and cx + w < crop.shape[1]:
+            return True
+    return False
+
+
+def note_durations(ink, staves, heads, ss):
+    """heads에 dur(4분음표=1) 채움. 온음표 4, 2분 2, 검정 머리는 꼬리/빔 수로 1·½·¼, 점은 ×1.5.
+    ponytail: 쉼표·붙임줄·셋잇단은 안 봄 — 그만큼 박이 밀림. 모델 클래스에 쉼표 추가하면 채울 것."""
+    on = ink > 0
+    thick = [_line_thickness(on, s) for s in staves]
+    for h in heads:
+        base = {"notehead_whole": 4, "notehead_half": 2}.get(h["cls"]) or 1 / 2 ** min(_flags(on, h["x"], h["y"], ss, thick[h["staff"]]), 3)
+        h["dur"] = base * (1.5 if _dotted(on, h["x"], h["y"], ss) else 1)
+    return heads
 
 
 def _systems(ink, staves):
@@ -705,26 +799,23 @@ def _track(events):
 
 
 def to_midi(pages, bpm=90):
-    """pages: detect_notes 결과 리스트(페이지 순). 같은 시스템 안에서 x로 정렬, 가까운 x(0.6ss)는 한 박에 같이 울림.
-    트랙: 0=템포, 1=높은음자리(오른손), 2=낮은음자리(왼손). 모든 음 1박. 반환: bytes(.mid)"""
-    cols = []  # [(clef, [midi numbers])] 순서대로
+    """pages: detect_notes 결과 리스트(페이지 순). 오선마다 x순으로 dur만큼 시간을 쌓고(화음=0.35ss 안 머리, 같이 울림),
+    시스템이 바뀔 때 두 손을 그 시점까지 온 것 중 늦은 쪽에 맞춤. 트랙: 0=템포, 1=높은음자리(오른손), 2=낮은음자리(왼손). 반환: bytes(.mid)"""
+    tracks = {"treble": [(0, b"\xc0\x00")], "bass": [(0, b"\xc0\x00")]}  # program 0 = 피아노
+    t_sys = 0
     for notes in pages:
         for sysno in sorted({n["system"] for n in notes}):
-            ns = sorted((n for n in notes if n["system"] == sysno), key=lambda n: n["x"])
-            col = []
-            for n in ns:
-                if col and n["x"] - col[-1]["x"] > 0.6 * n["ss"]:
-                    cols.append(col)
-                    col = []
-                col.append(n)
-            if col:
-                cols.append(col)
-    tracks = {"treble": [(0, b"\xc0\x00")], "bass": [(0, b"\xc0\x00")]}  # program 0 = 피아노
-    for k, col in enumerate(cols):
-        t0 = k * PPQ
-        for n in col:
-            m = midi_number(n["pitch"])
-            tracks[n["clef"]] += [(t0, bytes([0x90, m, 90])), (t0 + PPQ - 10, bytes([0x80, m, 0]))]
+            ends = [t_sys]
+            for st in sorted({n["staff"] for n in notes if n["system"] == sysno}):
+                t = t_sys
+                for chord in _chords([n for n in notes if n["staff"] == st], notes[0]["ss"]):
+                    ticks = int(max(n["dur"] for n in chord) * PPQ)
+                    for n in chord:
+                        m = midi_number(n["pitch"])
+                        tracks[n["clef"]] += [(t, bytes([0x90, m, 90])), (t + ticks - 10, bytes([0x80, m, 0]))]
+                    t += ticks
+                ends.append(t)
+            t_sys = max(ends)
     tempo = (60_000_000 // bpm).to_bytes(3, "big")
     head = b"MThd" + (6).to_bytes(4, "big") + (1).to_bytes(2, "big") + (3).to_bytes(2, "big") + PPQ.to_bytes(2, "big")
     return head + _track([(0, b"\xff\x51\x03" + tempo)]) + _track(tracks["treble"]) + _track(tracks["bass"])

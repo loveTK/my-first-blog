@@ -56,7 +56,7 @@
  "result.pdfnote": "첫 페이지만 미리 보여드려요. 나머지 페이지는 내려받은 파일에 들어 있습니다.",
  "result.dl": "결과 파일 내려받기",
  "result.midi_title": "연습용 MIDI",
- "result.midi_note": "인식한 음을 순서대로 한 박씩 재생해요. 리듬(음 길이)은 반영되지 않아요. 음높이 확인·따라 부르기용.",
+ "result.midi_note": "인식한 음을 음길이(온음표~16분음표, 점음표)대로 재생해요. 쉼표·붙임줄은 인식하지 않아 박이 밀릴 수 있어요. 음높이 확인·따라 부르기용.",
  "result.midi_bpm": "빠르기 (BPM)",
  "result.midi_btn": "MIDI 내려받기",
  "compare.title": "Notalo와 MusicXML 기반 도구 비교",
