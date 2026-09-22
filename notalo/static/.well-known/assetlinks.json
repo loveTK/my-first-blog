@@ -3,6 +3,6 @@
   "target": {
     "namespace": "android_app",
     "package_name": "xyz.notalo.app",
-    "sha256_cert_fingerprints": ["PASTE_SHA256_FROM_PWABUILDER"]
+    "sha256_cert_fingerprints": ["6FC199B9CF2FB120CA0E5FACE859C554C66CCCD7E8BD638E371FB953969797A77"]
   }
 }]
