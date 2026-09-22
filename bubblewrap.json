@@ -1,0 +1,21 @@
+{
+  "appName": "Notalo",
+  "packageId": "xyz.notalo.app",
+  "host": "notalo.xyz",
+  "launchUrl": "/",
+  "displayMode": "standalone",
+  "orientation": "portrait",
+  "statusBarColor": "#1F7A4A",
+  "navigationColor": "#1F7A4A",
+  "themeColor": "#1F7A4A",
+  "backgroundColor": "#ffffff",
+  "startUrl": "/",
+  "preferRelatedApplications": false,
+  "shortcuts": [],
+  "signingInfo": {
+    "path": "./notalo.keystore",
+    "alias": "notalo-key",
+    "keyPassword": "notalo2024",
+    "storePassword": "notalo2024"
+  }
+}
