@@ -25,7 +25,7 @@
  "how.step3_desc": "Obtén tu partitura etiquetada en segundos, lista para imprimir o practicar.",
  "tool.drop_strong": "Arrastra tu partitura aquí o haz clic para buscarla",
  "tool.drop_hint": "PDF, JPG, PNG · hasta 20MB",
- "tool.clean_hint": "Mejores resultados con partituras impresas y limpias. Fotos borrosas, tinta corrida o escaneos dibujados a mano pueden perder notas.",
+ "tool.clean_hint": "Debes usar partituras limpias. Fotos borrosas, tinta corrida o escaneos dibujados a mano pueden perder notas.",
  "tool.drop_sw": "Haz clic para elegir otro archivo",
  "tool.lang_label": "Idioma de las etiquetas",
  "tool.pos_label": "Posición de la etiqueta",

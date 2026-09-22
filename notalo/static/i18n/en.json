@@ -25,7 +25,7 @@
  "how.step3_desc": "Get your labeled sheet music in seconds, ready to print or practice with.",
  "tool.drop_strong": "Drop your sheet music here or click to browse",
  "tool.drop_hint": "PDF, JPG, PNG · up to 20MB",
- "tool.clean_hint": "Best results with clean, printed scores. Blurry photos, ink bleed or hand-drawn scans may miss notes.",
+ "tool.clean_hint": "You must use clean sheet music. Blurry photos, ink bleed or hand-drawn scans may miss notes.",
  "tool.drop_sw": "Click to choose a different file",
  "tool.lang_label": "Label language",
  "tool.pos_label": "Label position",

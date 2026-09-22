@@ -25,7 +25,7 @@
  "how.step3_desc": "Obtenez votre partition annotée en quelques secondes, prête à imprimer ou à utiliser pour vous entraîner.",
  "tool.drop_strong": "Déposez votre partition ici ou cliquez pour la choisir",
  "tool.drop_hint": "PDF, JPG, PNG · jusqu'à 20MB",
- "tool.clean_hint": "Meilleurs résultats avec des partitions imprimées et propres. Photos floues, encre baveuse ou scans manuscrits peuvent manquer des notes.",
+ "tool.clean_hint": "Vous devez utiliser une partition propre. Photos floues, encre baveuse ou scans manuscrits peuvent manquer des notes.",
  "tool.drop_sw": "Cliquez pour choisir un autre fichier",
  "tool.lang_label": "Langue des étiquettes",
  "tool.pos_label": "Position de l'étiquette",

@@ -25,7 +25,7 @@
  "how.step3_desc": "몇 초 만에 계이름이 적힌 악보를 받아 바로 출력하거나 연습할 수 있어요.",
  "tool.drop_strong": "악보 파일을 여기에 끌어다 놓거나 클릭",
  "tool.drop_hint": "PDF, JPG, PNG · 20MB까지",
- "tool.clean_hint": "깨끗하게 인쇄된 악보일수록 정확해요. 흐린 사진, 잉크 번짐, 손으로 그린 악보는 음표를 놓칠 수 있어요.",
+ "tool.clean_hint": "깨끗한 악보를 사용해야 한다. 흐린 사진, 잉크 번짐, 손으로 그린 악보는 음표를 놓칠 수 있어요.",
  "tool.drop_sw": "클릭해서 다른 파일로 바꾸기",
  "tool.lang_label": "계이름 표기",
  "tool.pos_label": "라벨 위치",
