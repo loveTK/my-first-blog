@@ -10,7 +10,8 @@ import time
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from PIL import Image
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from urllib.parse import quote
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
@@ -112,13 +113,16 @@ def _sweep_jobs():
             del _jobs[jid]
 
 
-def _process(src, out, ext, lang, position, mode, progress=lambda done, total: None):
+def _process(src, out, ext, lang, position, mode, progress=lambda done, total: None, notes_out=None):
     """페이지 한 장씩: 렌더 → 라벨 → 바로 out에 저장(PDF는 append). 결과를 메모리에 모으지 않아 페이지 수와 무관하게 메모리 일정.
-    반환: PDF면 첫 페이지 미리보기 URL, 아니면 None."""
+    notes_out(list)을 주면 페이지별 검출 음표를 담아줌(MIDI용). 반환: PDF면 첫 페이지 미리보기 URL, 아니면 None."""
     pages = core.load_pages(src)
     preview = None
     for i, p in enumerate(pages):
-        img = render.overlay(p, core.place_labels(core.detect_notes(p), lang, position, mode))
+        notes = core.detect_notes(p)
+        if notes_out is not None:
+            notes_out.append(notes)
+        img = render.overlay(p, core.place_labels(notes, lang, position, mode))
         img.save(out, append=(ext == ".pdf" and i > 0))  # PIL PDF: append=True면 기존 파일에 페이지 추가
         if i == 0 and ext == ".pdf":
             preview = _preview(img)
@@ -131,8 +135,9 @@ def _run_job(job_id, src, ext, lang, position, mode):
         def progress(done, total):
             _jobs[job_id].update(done=done, total=total)  # 진행률 막대용
         out = os.path.join(os.path.dirname(src), "out" + ext)
-        preview = _process(src, out, ext, lang, position, mode, progress)
-        _jobs[job_id].update(status="done", out=out, preview=preview)
+        notes = []
+        preview = _process(src, out, ext, lang, position, mode, progress, notes)
+        _jobs[job_id].update(status="done", out=out, preview=preview, notes=notes)
     except Exception:
         shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
         _jobs[job_id].update(status="error")
@@ -163,6 +168,7 @@ async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"),
 
 @app.get("/jobs/{job_id}/status")
 def job_status(job_id: str):
+    _sweep_jobs()  # 결과 받은 뒤에도 job이 남으므로 폴링 때마다 오래된 것 정리
     job = _jobs.get(job_id)
     if not job:
         raise HTTPException(404)
@@ -174,13 +180,23 @@ def job_result(job_id: str, request: Request):
     job = _jobs.get(job_id)
     if not job or job["status"] != "done":
         raise HTTPException(404)
-    resp = FileResponse(job["out"], filename=job["name"], background=BackgroundTask(shutil.rmtree, job["tmp"], ignore_errors=True))
+    resp = FileResponse(job["out"], filename=job["name"])  # job은 MIDI 내려받기용으로 JOB_TTL(30분)까지 남겨둠 → _sweep_jobs가 정리
     if job.get("preview"):
         resp.headers["X-Preview"] = job["preview"]
     if not auth.spend(request, resp):
         raise HTTPException(402, NO_CREDIT)
-    del _jobs[job_id]
     return resp
+
+
+@app.get("/jobs/{job_id}/midi")
+def job_midi(job_id: str, bpm: int = 90):
+    """1단계 MIDI: 검출한 음표를 순서대로, 모든 음 1박. 리듬은 반영 안 됨(화면에 명시)."""
+    job = _jobs.get(job_id)
+    if not job or job["status"] != "done":
+        raise HTTPException(404)
+    data = core.to_midi(job["notes"], max(40, min(240, bpm)))
+    name = os.path.splitext(job["name"])[0] + ".mid"
+    return Response(data, media_type="audio/midi", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
 
 @app.get("/processing")

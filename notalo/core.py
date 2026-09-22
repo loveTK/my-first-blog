@@ -551,9 +551,22 @@ def detect_notes(page_rgb):
     heads = kept
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
-    # ss/staff_top/staff_bot은 7단계 라벨 배치용
-    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "staff": h["staff"], "ss": ss,
+    sysid = _systems(ink, staves)
+    # ss/staff_top/staff_bot은 7단계 라벨 배치용, system은 MIDI 순서(같은 시스템의 오선은 x로 같이 읽음)
+    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
              "staff_top": line_y(staves[h["staff"]], 0, h["x"]), "staff_bot": line_y(staves[h["staff"]], 4, h["x"])} for h in heads]
+
+
+def _systems(ink, staves):
+    """오선 i → 시스템 번호. 위 오선 맨 아래 줄과 아래 오선 맨 위 줄 사이를 왼쪽 끝 세로선(시스템 마디선)이 잇고 있으면 같은 시스템."""
+    ids, cur = [0], 0
+    for a, b in zip(staves, staves[1:]):
+        x = int(min(a["x0"], b["x0"]))
+        col = ink[int(a["lines"][4]):int(b["lines"][0]), max(x - 2, 0):x + 4] > 0
+        joined = abs(a["x0"] - b["x0"]) < 2 * a["space"] and col.shape[0] > 0 and col.any(axis=1).mean() > 0.9
+        cur += 0 if joined else 1
+        ids.append(cur)
+    return ids
 
 
 NAMES = {  # 고정도: C=도. 옥타브는 표기 안 함
@@ -659,3 +672,59 @@ def place_labels(notes, lang, position, mode="greedy"):
         placed.append((x0, y0, x0 + w, y0 + h))
         out.append({"x": int(x0), "y": int(y0), "text": text, "clef": clef, "size": size})
     return out
+
+
+# ---------- MIDI (1단계: 음높이·순서만. 음 길이는 전부 1박 — 리듬 미반영) ----------
+PPQ = 480  # 4분음표 1개 = 480틱
+
+
+def midi_number(pitch):
+    """'C4'→60, 'F#4'→66, 'Bb3'→58."""
+    letter, rest = pitch[0], pitch[1:]
+    alter = rest.count("#") - rest.count("b")
+    octv = int(rest.lstrip("#b"))
+    return 12 * (octv + 1) + {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}[letter] + alter
+
+
+def _vlq(n):
+    out = [n & 0x7F]
+    while n >> 7:
+        n >>= 7
+        out.insert(0, (n & 0x7F) | 0x80)
+    return bytes(out)
+
+
+def _track(events):
+    """events: [(tick, bytes)] 절대 틱 → MTrk 청크(델타 타임)."""
+    body, t = b"", 0
+    for tick, msg in sorted(events, key=lambda e: e[0]):
+        body += _vlq(tick - t) + msg
+        t = tick
+    body += _vlq(0) + b"\xff\x2f\x00"  # end of track
+    return b"MTrk" + len(body).to_bytes(4, "big") + body
+
+
+def to_midi(pages, bpm=90):
+    """pages: detect_notes 결과 리스트(페이지 순). 같은 시스템 안에서 x로 정렬, 가까운 x(0.6ss)는 한 박에 같이 울림.
+    트랙: 0=템포, 1=높은음자리(오른손), 2=낮은음자리(왼손). 모든 음 1박. 반환: bytes(.mid)"""
+    cols = []  # [(clef, [midi numbers])] 순서대로
+    for notes in pages:
+        for sysno in sorted({n["system"] for n in notes}):
+            ns = sorted((n for n in notes if n["system"] == sysno), key=lambda n: n["x"])
+            col = []
+            for n in ns:
+                if col and n["x"] - col[-1]["x"] > 0.6 * n["ss"]:
+                    cols.append(col)
+                    col = []
+                col.append(n)
+            if col:
+                cols.append(col)
+    tracks = {"treble": [(0, b"\xc0\x00")], "bass": [(0, b"\xc0\x00")]}  # program 0 = 피아노
+    for k, col in enumerate(cols):
+        t0 = k * PPQ
+        for n in col:
+            m = midi_number(n["pitch"])
+            tracks[n["clef"]] += [(t0, bytes([0x90, m, 90])), (t0 + PPQ - 10, bytes([0x80, m, 0]))]
+    tempo = (60_000_000 // bpm).to_bytes(3, "big")
+    head = b"MThd" + (6).to_bytes(4, "big") + (1).to_bytes(2, "big") + (3).to_bytes(2, "big") + PPQ.to_bytes(2, "big")
+    return head + _track([(0, b"\xff\x51\x03" + tempo)]) + _track(tracks["treble"]) + _track(tracks["bass"])
