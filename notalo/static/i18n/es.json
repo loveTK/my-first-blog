@@ -22,7 +22,7 @@
  "how.step2_title": "Elige tus etiquetas",
  "how.step2_desc": "Elige un idioma y dónde aparecen las etiquetas: encima o debajo de cada nota.",
  "how.step3_title": "Descarga",
- "how.step3_desc": "Obtén tu partitura etiquetada en segundos, lista para imprimir o practicar.",
+ "how.step3_desc": "En segundos tienes tu partitura etiquetada, con cifrado de acordes y un MIDI de práctica, lista para imprimir o practicar.",
  "tool.drop_strong": "Arrastra tu partitura aquí o haz clic para buscarla",
  "tool.drop_hint": "PDF, JPG, PNG · hasta 20MB",
  "tool.clean_hint": "Debes usar partituras limpias. Fotos borrosas, tinta corrida o escaneos dibujados a mano pueden perder notas.",
@@ -170,5 +170,10 @@
  "meta.title": "Nombres de las notas en partituras de piano, gratis | Notalo",
  "meta.desc": "Sube una foto o un PDF y Notalo escribe el nombre de las notas o el solfeo (Do Re Mi) bajo cada nota. Partituras fáciles de piano para principiantes, gratis, sin software ni MusicXML.",
  "faq.q7": "¿Puedo crear partituras fáciles de piano para principiantes?",
- "faq.a7": "Sí. Sube la partitura que ya tienes (foto, escaneo o PDF) y Notalo escribe bajo cada nota su nombre o su sílaba de solfeo, así un principiante puede tocarla sin leer el pentagrama. Mano derecha e izquierda van en colores distintos."
+ "faq.a7": "Sí. Sube la partitura que ya tienes (foto, escaneo o PDF) y Notalo escribe bajo cada nota su nombre o su sílaba de solfeo, así un principiante puede tocarla sin leer el pentagrama. Mano derecha e izquierda van en colores distintos.",
+ "tool.chords_label": "Cifrado de acordes (verde)",
+ "faq.q8": "¿Puedo convertir la partitura a MIDI?",
+ "faq.a8": "Sí. Tras la conversión descargas un MIDI de práctica con las notas detectadas y su duración (de redonda a semicorchea, con puntillo) al tempo que quieras. Los silencios y ligaduras no se detectan: úsalo para comprobar las alturas y cantar, no como arreglo final.",
+ "faq.q9": "¿También añade el cifrado de acordes?",
+ "faq.a9": "Sí. Notalo lee las notas de cada compás, deduce el acorde (C, Am, G7…) y lo escribe en verde sobre el pentagrama: útil para acompañar. Es una estimación a partir de las notas escritas; si no lo necesitas, desmarca la casilla."
 }

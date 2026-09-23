@@ -22,7 +22,7 @@
  "how.step2_title": "Choisir les étiquettes",
  "how.step2_desc": "Choisissez une langue et si les étiquettes apparaissent au-dessus ou en dessous de chaque note.",
  "how.step3_title": "Télécharger",
- "how.step3_desc": "Obtenez votre partition annotée en quelques secondes, prête à imprimer ou à utiliser pour vous entraîner.",
+ "how.step3_desc": "En quelques secondes, votre partition annotée avec les accords et un MIDI d'entraînement, prête à imprimer ou à travailler.",
  "tool.drop_strong": "Déposez votre partition ici ou cliquez pour la choisir",
  "tool.drop_hint": "PDF, JPG, PNG · jusqu'à 20MB",
  "tool.clean_hint": "Vous devez utiliser une partition propre. Photos floues, encre baveuse ou scans manuscrits peuvent manquer des notes.",
@@ -170,5 +170,10 @@
  "meta.title": "Nom des notes sur vos partitions de piano, gratuit | Notalo",
  "meta.desc": "Importez une photo ou un PDF : Notalo écrit le nom des notes ou le solfège (Do Ré Mi) sous chaque note. Partitions de piano faciles pour débutants, gratuit, sans logiciel ni MusicXML.",
  "faq.q7": "Puis-je créer une partition de piano facile pour un débutant ?",
- "faq.a7": "Oui. Importez la partition que vous avez déjà (photo, scan ou PDF) : Notalo écrit sous chaque note son nom ou sa syllabe de solfège, et un débutant peut la jouer sans lire la portée. Main droite et main gauche sont de couleurs différentes."
+ "faq.a7": "Oui. Importez la partition que vous avez déjà (photo, scan ou PDF) : Notalo écrit sous chaque note son nom ou sa syllabe de solfège, et un débutant peut la jouer sans lire la portée. Main droite et main gauche sont de couleurs différentes.",
+ "tool.chords_label": "Symboles d'accords (vert)",
+ "faq.q8": "Puis-je convertir la partition en MIDI ?",
+ "faq.a8": "Oui. Après la conversion, téléchargez un MIDI d'entraînement avec les notes détectées et leur durée (de la ronde à la double croche, pointées) au tempo de votre choix. Silences et liaisons ne sont pas détectés : servez-vous-en pour vérifier les hauteurs et chanter, pas comme arrangement final.",
+ "faq.q9": "Ajoute-t-il aussi les symboles d'accords ?",
+ "faq.a9": "Oui. Notalo lit les notes de chaque mesure, en déduit l'accord (C, Am, G7…) et l'écrit en vert au-dessus de la portée : pratique pour accompagner. C'est une estimation à partir des notes écrites ; décochez la case si vous n'en avez pas besoin."
 }

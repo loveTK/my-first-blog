@@ -76,7 +76,7 @@ def _check_rate_limit(ip):
 
 @app.post("/convert")
 async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), position: str = Form("below"),
-                  mode: str = Form("greedy")):
+                  mode: str = Form("greedy"), chords: str = Form("")):
     _check_rate_limit(request.client.host)
     if auth.credits(request)["left"] <= 0:
         raise HTTPException(402, NO_CREDIT)
@@ -89,7 +89,7 @@ async def convert(request: Request, file: UploadFile, lang: str = Form("ko"), po
     src, out = os.path.join(tmp, "in" + ext), os.path.join(tmp, "out" + ext)
     with open(src, "wb") as f:
         f.write(data)
-    preview = _process(src, out, ext, lang, position, mode)
+    preview = _process(src, out, ext, lang, position, mode, chords=bool(chords))
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     resp = FileResponse(out, filename=name, background=BackgroundTask(shutil.rmtree, tmp))
     if preview:
@@ -113,7 +113,7 @@ def _sweep_jobs():
             del _jobs[jid]
 
 
-def _process(src, out, ext, lang, position, mode, progress=lambda done, total: None, notes_out=None):
+def _process(src, out, ext, lang, position, mode, progress=lambda done, total: None, notes_out=None, chords=True):
     """페이지 한 장씩: 렌더 → 라벨 → 바로 out에 저장(PDF는 append). 결과를 메모리에 모으지 않아 페이지 수와 무관하게 메모리 일정.
     notes_out(list)을 주면 페이지별 검출 음표를 담아줌(MIDI용). 반환: PDF면 첫 페이지 미리보기 URL, 아니면 None."""
     pages = core.load_pages(src)
@@ -122,7 +122,7 @@ def _process(src, out, ext, lang, position, mode, progress=lambda done, total: N
         notes = core.detect_notes(p)
         if notes_out is not None:
             notes_out.append(notes)
-        img = render.overlay(p, core.place_labels(notes, lang, position, mode))
+        img = render.overlay(p, core.place_labels(notes, lang, position, mode) + (core.chord_labels(notes) if chords else []))
         img.save(out, append=(ext == ".pdf" and i > 0))  # PIL PDF: append=True면 기존 파일에 페이지 추가
         if i == 0 and ext == ".pdf":
             preview = _preview(img)
@@ -130,13 +130,13 @@ def _process(src, out, ext, lang, position, mode, progress=lambda done, total: N
     return preview
 
 
-def _run_job(job_id, src, ext, lang, position, mode):
+def _run_job(job_id, src, ext, lang, position, mode, chords):
     try:
         def progress(done, total):
             _jobs[job_id].update(done=done, total=total)  # 진행률 막대용
         out = os.path.join(os.path.dirname(src), "out" + ext)
         notes = []
-        preview = _process(src, out, ext, lang, position, mode, progress, notes)
+        preview = _process(src, out, ext, lang, position, mode, progress, notes, chords)
         _jobs[job_id].update(status="done", out=out, preview=preview, notes=notes)
     except Exception:
         shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
@@ -145,7 +145,7 @@ def _run_job(job_id, src, ext, lang, position, mode):
 
 @app.post("/jobs")
 async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"), position: str = Form("below"),
-                      mode: str = Form("greedy")):
+                      mode: str = Form("greedy"), chords: str = Form("")):
     _check_rate_limit(request.client.host)
     _sweep_jobs()
     if auth.credits(request)["left"] <= 0:
@@ -162,7 +162,7 @@ async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"),
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     job_id = secrets.token_urlsafe(16)
     _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0}
-    threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode), daemon=True).start()
+    threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode, bool(chords)), daemon=True).start()
     return {"id": job_id}
 
 
@@ -190,7 +190,7 @@ def job_result(job_id: str, request: Request):
 
 @app.get("/jobs/{job_id}/midi")
 def job_midi(job_id: str, bpm: int = 90):
-    """1단계 MIDI: 검출한 음표를 순서대로, 모든 음 1박. 리듬은 반영 안 됨(화면에 명시)."""
+    """연습용 MIDI: 검출한 음표를 오선별 타임라인에 음길이대로. 쉼표·붙임줄은 없음(화면에 명시)."""
     job = _jobs.get(job_id)
     if not job or job["status"] != "done":
         raise HTTPException(404)

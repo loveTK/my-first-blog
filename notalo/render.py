@@ -4,7 +4,7 @@ import os
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-RED, BLUE = (200, 16, 46), (31, 79, 191)  # 높은음자리 #C8102E / 낮은음자리 #1F4FBF
+RED, BLUE, GREEN = (200, 16, 46), (31, 79, 191), (31, 122, 74)  # 높은음자리 #C8102E / 낮은음자리 #1F4FBF / 코드 #1F7A4A
 PAD = 2
 
 
@@ -50,7 +50,7 @@ def overlay(page_rgb, labels):
         y = l["y"] + PAD
         for line in l["text"].split("\n"):
             b = f.getbbox(line)
-            db.text((l["x"] + PAD - b[0], y - b[1]), line, fill=RED if l["clef"] == "treble" else BLUE, font=f)
+            db.text((l["x"] + PAD - b[0], y - b[1]), line, fill={"treble": RED, "bass": BLUE}.get(l["clef"], GREEN), font=f)
             y += b[3] - b[1] + 2 * PAD
     for (x0, y0, x1, y1), r, dy in boxes:
         ds.rounded_rectangle((x0, y0 + dy, x1, y1 + dy), radius=r, fill=(20, 20, 20, 70))

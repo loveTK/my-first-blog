@@ -516,6 +516,7 @@ def assign_pitches(ink, staves, dets, heads):
                 alter = measure_acc.get((letter, octv), key.get(letter, 0))
                 d["pitch"] = f"{letter}{'#' if alter > 0 else 'b' if alter < 0 else ''}{octv}"
                 d["clef"] = "bass" if cur_clef == "clef_f" else "treble"
+                d["bar"] = bar
     return heads
 
 
@@ -554,7 +555,7 @@ def detect_notes(page_rgb):
     note_durations(ink, staves, heads, ss)
     sysid = _systems(ink, staves)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용, system은 MIDI 순서(같은 시스템의 오선은 x로 같이 읽음)
-    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "dur": h["dur"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
+    return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "dur": h["dur"], "bar": h["bar"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
              "staff_top": line_y(staves[h["staff"]], 0, h["x"]), "staff_bot": line_y(staves[h["staff"]], 4, h["x"])} for h in heads]
 
 
@@ -655,9 +656,10 @@ def _systems(ink, staves):
     """오선 i → 시스템 번호. 위 오선 맨 아래 줄과 아래 오선 맨 위 줄 사이를 왼쪽 끝 세로선(시스템 마디선)이 잇고 있으면 같은 시스템."""
     ids, cur = [0], 0
     for a, b in zip(staves, staves[1:]):
-        x = int(min(a["x0"], b["x0"]))
-        col = ink[int(a["lines"][4]):int(b["lines"][0]), max(x - 2, 0):x + 4] > 0
-        joined = abs(a["x0"] - b["x0"]) < 2 * a["space"] and col.shape[0] > 0 and col.any(axis=1).mean() > 0.9
+        def bar(x):  # 두 오선 사이를 잇는 세로선이 x 근처에 있는가 (왼쪽 시스템 마디선 또는 오른쪽 끝마디선 — 큰보표는 마디선이 오선 사이도 지남)
+            col = ink[int(a["lines"][4]):int(b["lines"][0]), max(int(x) - 4, 0):int(x) + 5] > 0
+            return col.shape[0] > 0 and col.any(axis=1).mean() > 0.9
+        joined = abs(a["x0"] - b["x0"]) < 2 * a["space"] and (bar(min(a["x0"], b["x0"])) or bar(max(a["x1"], b["x1"])))
         cur += 0 if joined else 1
         ids.append(cur)
     return ids
@@ -770,6 +772,76 @@ def place_labels(notes, lang, position, mode="greedy"):
 
 # ---------- MIDI (1단계: 음높이·순서만. 음 길이는 전부 1박 — 리듬 미반영) ----------
 PPQ = 480  # 4분음표 1개 = 480틱
+
+
+CHORDS = {"": (0, 4, 7), "m": (0, 3, 7), "7": (0, 4, 7, 10), "maj7": (0, 4, 7, 11), "m7": (0, 3, 7, 10)}  # ponytail: 초보 악보용 5개. dim/aug/sus/분수코드 없음
+PC_NAMES = "C C# D Eb E F F# G Ab A Bb B".split()
+
+
+def chord_name(group):
+    """음표 묶음 → 코드 이름("C", "Am", "G7"…) 또는 None. 음길이 가중 피치클래스를 코드형에 맞춰 봄.
+    ponytail: 점수 = 맞는 음 - 0.7×틀린 음 + 베이스가 근음이면 0.8. 코드음이 전체 무게의 60% 미만이면 코드 없음."""
+    w = {}
+    for n in group:
+        pc = midi_number(n["pitch"]) % 12
+        w[pc] = w.get(pc, 0) + n["dur"]
+    if not w:
+        return None
+    total = sum(w.values())
+    bass = min(midi_number(n["pitch"]) for n in group) % 12
+    spelled = {midi_number(n["pitch"]) % 12: n["pitch"].rstrip("0123456789") for n in group}
+    best, best_s = None, 0.0
+    for root in range(12):
+        for q, tmpl in CHORDS.items():
+            T = {(root + i) % 12 for i in tmpl}
+            hit = sum(v for pc, v in w.items() if pc in T)
+            if len(T & set(w)) < 2 or hit < 0.6 * total:
+                continue
+            sc = hit - 0.7 * (total - hit) + (0.8 if bass == root else 0) + 0.3 * len(T & set(w)) - 0.15 * len(tmpl)
+            if sc > best_s:
+                best, best_s = (root, q), sc
+    if best is None or best_s < 1.0:
+        return None
+    root, q = best
+    return spelled.get(root, PC_NAMES[root]) + q
+
+
+def chord_labels(notes):
+    """마디마다 코드 이름을 시스템 맨 위 오선 위에 초록 라벨로. 마디 구간은 맨 위 오선의 마디 번호로 정하고 나머지 오선 음은 x로 넣음
+    (오선마다 마디선 검출 수가 다를 수 있어서). 마디 앞뒤 절반의 코드가 서로 다르면 둘 다 적음.
+    반환: render.overlay용 [{"x","y","text","clef":"chord","size"}]"""
+    if not notes:
+        return []
+    import bisect
+    import render
+    ss, out = notes[0]["ss"], []
+    for sysno in sorted({n["system"] for n in notes}):
+        sysn = [n for n in notes if n["system"] == sysno]
+        ref = min(n["staff"] for n in sysn)
+        starts = {}
+        for n in sysn:
+            if n["staff"] == ref:
+                starts[n["bar"]] = min(starts.get(n["bar"], n["x"]), n["x"])
+        xs = sorted(starts.values())
+        bins = {}
+        for n in sysn:
+            bins.setdefault(max(bisect.bisect_right(xs, n["x"] + 0.5 * ss) - 1, 0), []).append(n)
+        top = min(n["staff_top"] for n in sysn)
+        for _, g in sorted(bins.items()):
+            x0, x1 = min(n["x"] for n in g), max(n["x"] for n in g)
+            mid = (x0 + x1) / 2
+            halves = [[n for n in g if n["x"] < mid], [n for n in g if n["x"] >= mid]]
+            names = [chord_name(h) if h else None for h in halves]
+            if all(names) and names[0] != names[1]:
+                picks = [(x0, names[0]), (min(n["x"] for n in halves[1]), names[1])]
+            else:
+                picks = [(x0, chord_name(g))]
+            for x, name in picks:
+                if name:
+                    size = 1.4 * ss
+                    w, h = render.text_size(name, size)
+                    out.append({"x": int(x - 0.6 * ss), "y": max(int(top - 3.0 * ss - h), 2), "text": name, "clef": "chord", "size": size})
+    return out
 
 
 def midi_number(pitch):

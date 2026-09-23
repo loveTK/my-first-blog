@@ -22,7 +22,7 @@
  "how.step2_title": "Scegli le etichette",
  "how.step2_desc": "Scegli la lingua e se le etichette vanno sopra o sotto ogni nota.",
  "how.step3_title": "Scarica",
- "how.step3_desc": "Ottieni in pochi secondi lo spartito con le etichette, pronto da stampare o usare per esercitarti.",
+ "how.step3_desc": "In pochi secondi hai lo spartito con le etichette, le sigle degli accordi e un MIDI di studio, pronto da stampare o per esercitarti.",
  "tool.drop_strong": "Trascina qui il tuo spartito o clicca per scegliere il file",
  "tool.drop_hint": "PDF, JPG, PNG · fino a 20MB",
  "tool.clean_hint": "Usare spartiti puliti. Foto sfocate, inchiostro sbavato o scansioni disegnate a mano possono perdere note.",
@@ -170,5 +170,10 @@
  "meta.title": "Nomi delle note sullo spartito per pianoforte, gratis | Notalo",
  "meta.desc": "Carica una foto o un PDF: Notalo scrive il nome delle note o il solfeggio (Do Re Mi) sotto ogni nota. Spartiti facili per pianoforte, gratis, senza software né MusicXML.",
  "faq.q7": "Posso creare spartiti facili per pianoforte per un principiante?",
- "faq.a7": "Sì. Carica lo spartito che hai già (foto, scansione o PDF) e Notalo scrive sotto ogni nota il nome o la sillaba del solfeggio: un principiante può suonare subito senza leggere il pentagramma. Mano destra e sinistra hanno colori diversi."
+ "faq.a7": "Sì. Carica lo spartito che hai già (foto, scansione o PDF) e Notalo scrive sotto ogni nota il nome o la sillaba del solfeggio: un principiante può suonare subito senza leggere il pentagramma. Mano destra e sinistra hanno colori diversi.",
+ "tool.chords_label": "Sigle degli accordi (verde)",
+ "faq.q8": "Posso convertire lo spartito in MIDI?",
+ "faq.a8": "Sì. Dopo la conversione scarichi un MIDI di studio con le note rilevate e le loro durate (dalla semibreve alla semicroma, puntate) al tempo che vuoi. Pause e legature non vengono rilevate: usalo per controllare le altezze e cantare, non come arrangiamento finito.",
+ "faq.q9": "Aggiunge anche le sigle degli accordi?",
+ "faq.a9": "Sì. Notalo legge le note di ogni battuta, ricava l'accordo (C, Am, G7…) e lo scrive in verde sopra il pentagramma: comodo per accompagnare. È una stima dalle note scritte; se non serve, togli la spunta."
 }

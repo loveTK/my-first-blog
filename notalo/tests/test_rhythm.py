@@ -32,6 +32,9 @@ if __name__ == "__main__":
         r = SequenceMatcher(None, exp.split(), got).ratio()
         print(f"staff {st}: {r:.3f}", "" if r >= 0.95 else "\n  exp " + exp + "\n  got " + " ".join(got))
         assert r >= 0.95, st
+    names = [c["text"] for c in core.chord_labels(notes)]
+    assert names[:4] == ["C", "C", "C", "Dm"], names  # 1~3마디: C | C(위 D E) | <c e g> <c e g> → C, <d f a> → Dm
+    assert {n["system"] for n in notes if n["staff"] in (0, 1)} == {0}, "큰보표 두 오선이 한 시스템이어야 함"
     mid = core.to_midi([notes], 120)
     assert mid[:4] == b"MThd" and mid.count(b"MTrk") == 3
     print("OK")

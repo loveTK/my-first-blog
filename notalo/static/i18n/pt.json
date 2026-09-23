@@ -22,7 +22,7 @@
  "how.step2_title": "Escolha as etiquetas",
  "how.step2_desc": "Escolha o idioma e se as etiquetas ficam acima ou abaixo de cada nota.",
  "how.step3_title": "Baixe",
- "how.step3_desc": "Receba sua partitura com as notas nomeadas em segundos, pronta para imprimir ou praticar.",
+ "how.step3_desc": "Em segundos, sua partitura com as notas nomeadas, cifras dos acordes e um MIDI de prática, pronta para imprimir ou praticar.",
  "tool.drop_strong": "Arraste sua partitura aqui ou clique para escolher",
  "tool.drop_hint": "PDF, JPG, PNG · até 20MB",
  "tool.clean_hint": "Você deve usar partituras limpas. Fotos borradas, tinta borrada ou digitalizações desenhadas à mão podem perder notas.",
@@ -170,5 +170,10 @@
  "meta.title": "Nome das notas na partitura de piano, grátis | Notalo",
  "meta.desc": "Envie uma foto ou PDF e o Notalo escreve o nome das notas ou o solfejo (Dó Ré Mi) sob cada nota. Partituras fáceis de piano para iniciantes, grátis, sem software nem MusicXML.",
  "faq.q7": "Posso criar partituras fáceis de piano para iniciantes?",
- "faq.a7": "Sim. Envie a partitura que já tem (foto, digitalização ou PDF) e o Notalo escreve sob cada nota o seu nome ou a sílaba do solfejo, para um iniciante tocar sem ler a pauta. Mão direita e esquerda ficam em cores diferentes."
+ "faq.a7": "Sim. Envie a partitura que já tem (foto, digitalização ou PDF) e o Notalo escreve sob cada nota o seu nome ou a sílaba do solfejo, para um iniciante tocar sem ler a pauta. Mão direita e esquerda ficam em cores diferentes.",
+ "tool.chords_label": "Cifras dos acordes (verde)",
+ "faq.q8": "Posso converter a partitura em MIDI?",
+ "faq.a8": "Sim. Após a conversão, baixe um MIDI de prática com as notas detectadas e suas durações (de semibreve a semicolcheia, pontuadas) no andamento que quiser. Pausas e ligaduras não são detectadas: use para conferir as alturas e cantar junto, não como arranjo final.",
+ "faq.q9": "Também adiciona as cifras dos acordes?",
+ "faq.a9": "Sim. O Notalo lê as notas de cada compasso, deduz o acorde (C, Am, G7…) e escreve em verde acima da pauta: útil para acompanhar. É uma estimativa a partir das notas escritas; se não precisar, desmarque a caixa."
 }

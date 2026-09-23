@@ -22,7 +22,7 @@
  "how.step2_title": "Beschriftung wählen",
  "how.step2_desc": "Wähle eine Sprache und ob die Namen über oder unter den Noten stehen sollen.",
  "how.step3_title": "Herunterladen",
- "how.step3_desc": "In Sekunden fertig — deine beschrifteten Noten zum Drucken oder Üben.",
+ "how.step3_desc": "In Sekunden fertig – deine beschrifteten Noten mit Akkordsymbolen und Übungs-MIDI, zum Drucken oder Üben.",
  "tool.drop_strong": "Noten hier ablegen oder klicken zum Auswählen",
  "tool.drop_hint": "PDF, JPG, PNG · bis 20MB",
  "tool.clean_hint": "Sie müssen saubere Noten verwenden. Unscharfe Fotos, verlaufene Tinte oder handgezeichnete Scans können Noten übersehen.",
@@ -170,5 +170,10 @@
  "meta.title": "Notennamen in Klaviernoten eintragen – kostenlos | Notalo",
  "meta.desc": "Foto oder PDF hochladen – Notalo schreibt Notennamen oder Solmisation (Do Re Mi) unter jede Note. Leichte Klaviernoten für Anfänger, kostenlos, ohne Software und MusicXML.",
  "faq.q7": "Kann ich leichte Klaviernoten für Anfänger erstellen?",
- "faq.a7": "Ja. Lade die Noten hoch, die du hast (Foto, Scan oder PDF) – Notalo schreibt unter jede Note den Notennamen oder die Solmisationssilbe. So kann ein Anfänger sofort spielen, ohne erst Noten lesen zu lernen. Rechte und linke Hand sind farblich getrennt."
+ "faq.a7": "Ja. Lade die Noten hoch, die du hast (Foto, Scan oder PDF) – Notalo schreibt unter jede Note den Notennamen oder die Solmisationssilbe. So kann ein Anfänger sofort spielen, ohne erst Noten lesen zu lernen. Rechte und linke Hand sind farblich getrennt.",
+ "tool.chords_label": "Akkordsymbole (grün)",
+ "faq.q8": "Kann ich Noten in MIDI umwandeln?",
+ "faq.a8": "Ja. Nach der Umwandlung lädst du eine Übungs-MIDI mit den erkannten Noten und ihren Längen (ganze bis Sechzehntel, punktiert) in beliebigem Tempo herunter. Pausen und Haltebögen werden nicht erkannt – zum Prüfen der Tonhöhen und Mitsingen, nicht als fertiges Arrangement.",
+ "faq.q9": "Werden auch Akkordsymbole eingetragen?",
+ "faq.a9": "Ja. Notalo liest die Noten jedes Takts, bestimmt den Akkord (C, Am, G7…) und schreibt ihn grün über die Notenzeile – praktisch zum Begleiten. Es ist eine Schätzung aus den notierten Tönen; über das Kästchen lässt es sich abschalten."
 }

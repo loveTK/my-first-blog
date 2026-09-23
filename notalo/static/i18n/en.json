@@ -22,7 +22,7 @@
  "how.step2_title": "Choose your labels",
  "how.step2_desc": "Pick a language and where labels appear — above or below each note.",
  "how.step3_title": "Download",
- "how.step3_desc": "Get your labeled sheet music in seconds, ready to print or practice with.",
+ "how.step3_desc": "Get your labeled sheet music in seconds — with chord symbols and a practice MIDI — ready to print or practice with.",
  "tool.drop_strong": "Drop your sheet music here or click to browse",
  "tool.drop_hint": "PDF, JPG, PNG · up to 20MB",
  "tool.clean_hint": "You must use clean sheet music. Blurry photos, ink bleed or hand-drawn scans may miss notes.",
@@ -170,5 +170,10 @@
  "meta.title": "Add Note Names to Piano Sheet Music Free – Notalo",
  "meta.desc": "Turn any piano sheet music into easy piano notes: upload a photo or PDF and Notalo adds note names or solfège (Do Re Mi) under every note. Free, no MusicXML, no software.",
  "faq.q7": "Can I make easy piano sheet music for a beginner?",
- "faq.a7": "Yes. Upload the piece you already have — a photo, scan or PDF — and Notalo writes the note name or solfège under every note, so a beginner can play it without reading the staff first. Right hand and left hand are colored differently."
+ "faq.a7": "Yes. Upload the piece you already have — a photo, scan or PDF — and Notalo writes the note name or solfège under every note, so a beginner can play it without reading the staff first. Right hand and left hand are colored differently.",
+ "tool.chords_label": "Chord symbols (green)",
+ "faq.q8": "Can I convert sheet music to MIDI?",
+ "faq.a8": "Yes. After conversion, download a practice MIDI of the detected notes with their lengths (whole to sixteenth, dotted) at any tempo. Rests and ties aren't detected, so use it to check pitches and sing along rather than as a finished arrangement.",
+ "faq.q9": "Does it add chord symbols?",
+ "faq.a9": "Yes. Notalo reads the notes in each measure, works out the chord (C, Am, G7…) and prints it in green above the staff — handy for accompaniment. It's a best guess from the written notes; turn it off with the checkbox if you don't need it."
 }
