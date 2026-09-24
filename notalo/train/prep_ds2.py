@@ -11,11 +11,19 @@ import cv2
 import numpy as np
 
 TILE, STRIDE = 1024, 896  # 128px 겹침
-CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
+# 0~8: 기존(음높이용). 9~12: 리듬용 추가 클래스 — 지금은 core.py가 픽셀 추측(_flags/_dotted)으로 때우는 것들.
+# core.py의 CLASSES와 순서·개수가 반드시 같아야 함(인덱스로 매핑). 한쪽만 고치면 추론이 깨짐.
+CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c",
+           "flag8th", "flag16th", "beam", "augmentation_dot"]
 # DS2 카테고리명 부분 문자열 → 우리 클래스. OnLine/InSpace/Small 변형은 전부 같은 클래스로 합침
+# ponytail: flag/beam/dot 이름은 DeepScoresV2 공식 카테고리 표기 추정(실제 다운로드 못 해서 미검증).
+# 실행 전에 확인: python -c "import json;d=json.load(open('<ds2>/deepscores_train.json'));print(sorted({v['name'] for v in d['categories'].values()}))"
+# 이 스크립트가 "미분류 카테고리"로 뭘 건너뛰는지도 한번 찍어보면 이름이 다른지 바로 앎(아래 cls_of 밑 統計 참고).
 NAME_MAP = [("noteheadBlack", 0), ("noteheadFull", 0), ("noteheadHalf", 1), ("noteheadWhole", 2), ("noteheadDoubleWhole", 2),
             ("accidentalSharp", 3), ("keySharp", 3), ("accidentalFlat", 4), ("keyFlat", 4),
-            ("accidentalNatural", 5), ("keyNatural", 5), ("clefG", 6), ("clefF", 7), ("clefC", 8)]
+            ("accidentalNatural", 5), ("keyNatural", 5), ("clefG", 6), ("clefF", 7), ("clefC", 8),
+            ("flag8th", 9), ("flag16th", 10), ("flag32nd", 10), ("flag64th", 10),  # 32분 이상은 16분과 합침(둘 다 흔치 않고, core.py에서 dur 계산 시 상한 있음)
+            ("beam", 11), ("augmentationDot", 12)]
 
 
 def cls_of(name):

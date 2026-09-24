@@ -334,7 +334,10 @@ def _clef_key_end(ink, ys, space, x0):
 
 TRAIN_SS = 16.5  # 학습 데이터(DeepScoresV2) staff space(px). 추론 전 페이지를 이 크기로 맞춤
 TILE, STRIDE = 1024, 960  # 겹침 64px ≈ 4 staff space(음표머리 1개는 1 ss)
-CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c"]
+# 0~8: 현재 배포 모델. 9~12: 재학습 대상(train/prep_ds2.py와 순서·개수 동일해야 함) — 구모델은 이 인덱스를 절대
+# 못 내놓으니(클래스 수가 9개뿐) 아래 note_durations은 신모델일 때만 이 클래스를 쓰고 구모델이면 그냥 폴백함.
+CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c",
+           "flag8th", "flag16th", "beam", "augmentation_dot"]
 WEIGHTS = os.environ.get("NOTALO_WEIGHTS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "weights", "notes.onnx"))
 _sess = None
 
@@ -552,7 +555,7 @@ def detect_notes(page_rgb):
     heads = kept
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
-    note_durations(ink, staves, heads, ss)
+    note_durations(ink, staves, heads, ss, dets)
     sysid = _systems(ink, staves)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용, system은 MIDI 순서(같은 시스템의 오선은 x로 같이 읽음)
     return [{"x": h["x"], "y": h["y"], "pitch": h["pitch"], "clef": h["clef"], "dur": h["dur"], "bar": h["bar"], "staff": h["staff"], "system": sysid[h["staff"]], "ss": ss,
@@ -641,14 +644,36 @@ def _dotted(on, x, y, ss):
     return False
 
 
-def note_durations(ink, staves, heads, ss):
+def _model_flag_count(dets, x, y, ss):
+    """머리 근처(기둥이 있을 만한 반경)에 모델이 직접 찍은 flag8th/flag16th/beam이 있으면 개수를 정함.
+    beam은 겹수를 안 세고 있으면 최소 8분(1)로만 본다 — 정확한 겹빔 카운트는 다음 단계."""
+    near = [d for d in dets if d["cls"] in ("flag8th", "flag16th", "beam") and abs(d["x"] - x) < 1.2 * ss and abs(d["y"] - y) < 3.0 * ss]
+    if not near:
+        return 0
+    return max({"flag8th": 1, "flag16th": 2, "beam": 1}[d["cls"]] for d in near)
+
+
+def _model_dotted(dets, x, y, ss):
+    return any(d["cls"] == "augmentation_dot" and 0.5 * ss < d["x"] - x < 2.2 * ss and abs(d["y"] - y) < 0.8 * ss for d in dets)
+
+
+def note_durations(ink, staves, heads, ss, dets=()):
     """heads에 dur(4분음표=1) 채움. 온음표 4, 2분 2, 검정 머리는 꼬리/빔 수로 1·½·¼, 점은 ×1.5.
+    꼬리/빔/점은 모델이 직접 검출했으면(재학습 후) 그걸 쓰고, 아니면(지금 배포판) 픽셀 추측(_flags/_dotted)으로 때움 —
+    dets에 새 클래스가 하나도 없으면 구모델이란 뜻이라 페이지 전체에서 픽셀 추측으로 폴백.
     ponytail: 쉼표·붙임줄·셋잇단은 안 봄 — 그만큼 박이 밀림. 모델 클래스에 쉼표 추가하면 채울 것."""
     on = ink > 0
     thick = [_line_thickness(on, s) for s in staves]
+    rhythm_model = any(d["cls"] in ("flag8th", "flag16th", "beam") for d in dets)
+    dot_model = any(d["cls"] == "augmentation_dot" for d in dets)
     for h in heads:
-        base = {"notehead_whole": 4, "notehead_half": 2}.get(h["cls"]) or 1 / 2 ** min(_flags(on, h["x"], h["y"], ss, thick[h["staff"]]), 3)
-        h["dur"] = base * (1.5 if _dotted(on, h["x"], h["y"], ss) else 1)
+        if h["cls"] in ("notehead_whole", "notehead_half"):
+            base = {"notehead_whole": 4, "notehead_half": 2}[h["cls"]]
+        else:
+            n = _model_flag_count(dets, h["x"], h["y"], ss) if rhythm_model else _flags(on, h["x"], h["y"], ss, thick[h["staff"]])
+            base = 1 / 2 ** min(n, 3)
+        dotted = _model_dotted(dets, h["x"], h["y"], ss) if dot_model else _dotted(on, h["x"], h["y"], ss)
+        h["dur"] = base * (1.5 if dotted else 1)
     return heads
 
 

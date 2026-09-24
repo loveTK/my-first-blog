@@ -3,6 +3,19 @@
 서비스 컨테이너엔 GPU도 데이터셋도 없다. 학습은 **DeepScoresV2를 내려받은 PC(가능하면 GPU)** 에서 돌리고,
 결과 `weights/notes.onnx`만 커밋한다.
 
+## 진행 상태 — 리듬(꼬리·빔·점) 재학습 준비 완료, 실행은 아직
+
+MIDI 리듬 정확도가 낮은 원인: 꼬리·빔·점은 모델이 안 배우고 `core.py`의 픽셀 추측(`_flags`/`_dotted`)으로
+때움 — 흐린 스캔·겹친 기둥·기울어진 빔에서 자주 틀림. 코드는 이미 준비됨:
+- `train/prep_ds2.py`: CLASSES를 9→13개로 확장(`flag8th`, `flag16th`, `beam`, `augmentation_dot` 추가).
+  DS2 카테고리명 매핑은 **추정치**(실제 파일로 미검증) — 1단계에서 반드시 확인.
+- `core.py`의 `note_durations`: 새 클래스가 검출되면(재학습 후) 그걸 쓰고, 없으면(지금 배포판) 기존 픽셀
+  추측으로 자동 폴백 — 구모델 그대로 둬도 안 깨짐, 새 weights 올리면 자동으로 정확도만 올라감.
+
+**여기서부터 GPU 있는 PC에서 진행**:
+1. DS2 받고 카테고리명 확인: `python -c "import json;d=json.load(open('<ds2>/deepscores_train.json'));print(sorted({v['name'] for v in d['categories'].values()} & {'flag8thUp','flag8thDown','flag16thUp','flag16thDown','beam','augmentationDot'}))"` — 아무것도 안 뜨면 실제 이름이 다른 것이니 `prep_ds2.py`의 `NAME_MAP`부터 고칠 것.
+2. 아래 순서(§ 순서) 그대로. `test_rhythm.py`(리듬 게이트, `tests/rhythm/t1.png`)도 `test_accuracy.py`와 같이 통과해야 배포.
+
 ## 왜 다시 학습하나
 현재 모델은 깨끗한 렌더링(DeepScoresV2)만 봤다. 복사기 스캔·책 사진처럼 번지고 얼룩진 악보에선
 빽빽한 16분음표 빔 속 머리를 놓친다(엘리제 2페이지 아래 시스템 등). 학습 타일의 절반에
