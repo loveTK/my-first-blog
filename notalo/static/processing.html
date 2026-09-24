@@ -210,7 +210,11 @@ try {
   if (bg) { $('scan-bg').style.backgroundImage = `url(${bg})`; show($('scan-wrap'), true); sessionStorage.removeItem('notalo_bg'); }
 } catch (_) {}
 // 진행률: 서버가 준 완료 페이지 수 + 현재 페이지 안에서의 추정치(페이지당 ~8초 기준, 90%까지만 기어감)
-let done = 0, total = 0, pageT0 = Date.now(), pct = 0;
+let done = 0, total = 0, pageT0 = Date.now(), pct = 0, midiShown = false;
+const midi = $('dl-midi');
+const setMidi = () => { midi.href = `/jobs/${jobId}/midi?bpm=${Math.max(40, Math.min(240, +$('bpm').value || 90))}`; };
+$('bpm').oninput = setMidi; midi.onclick = () => gtag('event', 'download_midi', { bpm: +$('bpm').value });
+const showMidi = () => { if (midiShown) return; midiShown = true; setMidi(); show($('midi'), true); };
 const PER_PAGE_MS = 8000, TIP_COUNT = 6, QUOTE_COUNT = 30;
 const tick = () => {
   const within = total ? 0.9 * (1 - Math.exp(-(Date.now() - pageT0) / PER_PAGE_MS)) : 0;
@@ -238,7 +242,10 @@ const poll = async () => {
     if (!r.ok) { showError(t('tool.status_no_staff')); return; }
     const d = await r.json();
     if (d.done !== done || d.total !== total) { done = d.done; total = d.total; pageT0 = Date.now(); }
-    if (d.status === 'processing') { setTimeout(poll, 1200); return; }
+    if (d.status === 'processing') {
+      if (d.done >= 1) showMidi();  // 라벨 이미지가 다 끝나기 전에도 처리된 페이지만큼 MIDI 바로 받기
+      setTimeout(poll, 1200); return;
+    }
     if (d.status === 'error') { showError(d.detail || t('tool.status_no_staff')); return; }
     // done
     const rr = await fetch(`/jobs/${jobId}/result`);
@@ -252,10 +259,7 @@ const poll = async () => {
     $('img').src = isPdf ? rr.headers.get('X-Preview') : u; show($('img'), true); show(dl, true);
     gtag('event', 'convert_done', { file_type: isPdf ? 'pdf' : 'image', seconds: Math.round((Date.now() - t0) / 1000) });
     dl.onclick = () => gtag('event', 'download', { file_type: isPdf ? 'pdf' : 'image' });
-    const midi = $('dl-midi');
-    const setMidi = () => { midi.href = `/jobs/${jobId}/midi?bpm=${Math.max(40, Math.min(240, +$('bpm').value || 90))}`; };
-    setMidi(); $('bpm').oninput = setMidi; show($('midi'), true);
-    midi.onclick = () => gtag('event', 'download_midi', { bpm: +$('bpm').value });
+    showMidi();  // 처리 중에 이미 떴을 수 있음 — 안 떴으면(빠른 단일 페이지 등) 여기서
   } catch (_) { showError(t('tool.status_no_staff')); }
 };
 

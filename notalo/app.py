@@ -135,9 +135,9 @@ def _run_job(job_id, src, ext, lang, position, mode, chords):
         def progress(done, total):
             _jobs[job_id].update(done=done, total=total)  # 진행률 막대용
         out = os.path.join(os.path.dirname(src), "out" + ext)
-        notes = []
+        notes = _jobs[job_id]["notes"]  # _process가 페이지마다 append → MIDI가 완료 전에도 처리된 페이지만큼 바로 나옴
         preview = _process(src, out, ext, lang, position, mode, progress, notes, chords)
-        _jobs[job_id].update(status="done", out=out, preview=preview, notes=notes)
+        _jobs[job_id].update(status="done", out=out, preview=preview)
     except Exception:
         shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
         _jobs[job_id].update(status="error")
@@ -161,7 +161,7 @@ async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"),
         f.write(data)
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     job_id = secrets.token_urlsafe(16)
-    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0}
+    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0, "notes": []}
     threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode, bool(chords)), daemon=True).start()
     return {"id": job_id}
 
@@ -190,9 +190,10 @@ def job_result(job_id: str, request: Request):
 
 @app.get("/jobs/{job_id}/midi")
 def job_midi(job_id: str, bpm: int = 90):
-    """연습용 MIDI: 검출한 음표를 오선별 타임라인에 음길이대로. 쉼표·붙임줄은 없음(화면에 명시)."""
+    """연습용 MIDI: 검출한 음표를 오선별 타임라인에 음길이대로. 쉼표·붙임줄은 없음(화면에 명시).
+    라벨 이미지 렌더링이 끝나길 기다리지 않고, 그때까지 처리된 페이지만으로도 바로 내려받을 수 있음(job["notes"]는 페이지마다 채워짐)."""
     job = _jobs.get(job_id)
-    if not job or job["status"] != "done":
+    if not job or job["status"] == "error" or not job["notes"]:
         raise HTTPException(404)
     data = core.to_midi(job["notes"], max(40, min(240, bpm)))
     name = os.path.splitext(job["name"])[0] + ".mid"
