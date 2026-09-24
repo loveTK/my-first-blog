@@ -88,3 +88,18 @@ stateDiagram-v2
 ## 8. 디자인 수정 요청 (여기에 적기)
 
 - [ ] 
+
+## 9. 가입/관리 서비스 계정 (내가 아는 것만 — 최신판은 CLAUDE.md)
+
+| 서비스 | 역할(초등학생 설명) |
+|---|---|
+| GitHub (loveTK/my-first-blog) | 코드를 저장하는 곳. 코드 바뀌면 자동 배포 로봇(Actions)도 여기서 돌아감. |
+| AWS Lightsail | 사이트가 실제로 켜져서 돌아가는 서버 컴퓨터. |
+| Cloudflare | notalo.xyz 주소를 서버로 연결해주는 곳. |
+| Google Analytics | 사이트 방문자 수 세는 도구. |
+| Google AdSense | 광고 붙여서 돈 버는 도구. |
+| Google OAuth | "구글로 로그인" 버튼의 신분증 확인 열쇠. |
+| Gmail (xorud386@gmail.com) | 사용자 문의 받는 이메일. |
+| PWA Builder | 웹사이트를 안드로이드 앱 파일로 바꿔주는 도구. |
+| Google Play Console | 앱을 스토어에 올리는 곳(예정, 아직 등록 안 함). |
+| Zenodo / DeepScoresV2 | AI가 학습한 악보 데이터 출처(계정 아님, 표기 의무). |
