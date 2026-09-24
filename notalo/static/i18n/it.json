@@ -175,5 +175,7 @@
  "faq.q8": "Posso convertire lo spartito in MIDI?",
  "faq.a8": "Sì. Dopo la conversione scarichi un MIDI di studio con le note rilevate e le loro durate (dalla semibreve alla semicroma, puntate) al tempo che vuoi. Pause e legature non vengono rilevate: usalo per controllare le altezze e cantare, non come arrangiamento finito.",
  "faq.q9": "Aggiunge anche le sigle degli accordi?",
- "faq.a9": "Sì. Notalo legge le note di ogni battuta, ricava l'accordo (C, Am, G7…) e lo scrive in verde sopra il pentagramma: comodo per accompagnare. È una stima dalle note scritte; se non serve, togli la spunta."
+ "faq.a9": "Sì. Notalo legge le note di ogni battuta, ricava l'accordo (C, Am, G7…) e lo scrive in verde sopra il pentagramma: comodo per accompagnare. È una stima dalle note scritte; se non serve, togli la spunta.",
+ "hero.badge_chords": "Sigle accordi",
+ "hero.badge_midi": "MIDI di studio"
 }

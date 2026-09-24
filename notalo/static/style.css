@@ -182,3 +182,5 @@ footer a{color:inherit}
 .chk{align-self:end}
 .chk label{display:flex;align-items:center;gap:8px;margin:0;padding:11px 0;font-size:14px;color:var(--fg);cursor:pointer}
 .chk input{accent-color:#1F7A4A;width:18px;height:18px;margin:0}
+.badges{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1F7A4A;background:#1F7A4A14;border:1px solid #1F7A4A33;border-radius:999px;padding:6px 12px}

@@ -175,5 +175,7 @@
  "faq.q8": "Kann ich Noten in MIDI umwandeln?",
  "faq.a8": "Ja. Nach der Umwandlung lädst du eine Übungs-MIDI mit den erkannten Noten und ihren Längen (ganze bis Sechzehntel, punktiert) in beliebigem Tempo herunter. Pausen und Haltebögen werden nicht erkannt – zum Prüfen der Tonhöhen und Mitsingen, nicht als fertiges Arrangement.",
  "faq.q9": "Werden auch Akkordsymbole eingetragen?",
- "faq.a9": "Ja. Notalo liest die Noten jedes Takts, bestimmt den Akkord (C, Am, G7…) und schreibt ihn grün über die Notenzeile – praktisch zum Begleiten. Es ist eine Schätzung aus den notierten Tönen; über das Kästchen lässt es sich abschalten."
+ "faq.a9": "Ja. Notalo liest die Noten jedes Takts, bestimmt den Akkord (C, Am, G7…) und schreibt ihn grün über die Notenzeile – praktisch zum Begleiten. Es ist eine Schätzung aus den notierten Tönen; über das Kästchen lässt es sich abschalten.",
+ "hero.badge_chords": "Akkordsymbole",
+ "hero.badge_midi": "Übungs-MIDI"
 }
