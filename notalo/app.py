@@ -118,9 +118,14 @@ def _process(src, out, ext, lang, position, mode, progress=lambda done, total: N
     """페이지 한 장씩: 렌더 → 라벨 → 바로 out에 저장(PDF는 append). 결과를 메모리에 모으지 않아 페이지 수와 무관하게 메모리 일정.
     notes_out(list)을 주면 페이지별 검출 음표를 담아줌(MIDI용). 반환: PDF면 첫 페이지 미리보기 URL, 아니면 None."""
     pages = core.load_pages(src)
-    preview = None
+    preview, failed = None, 0
     for i, p in enumerate(pages):
-        notes = core.detect_notes(p)
+        try:
+            notes = core.detect_notes(p)
+        except AssertionError:  # 오선 못 찾은 페이지(표지·가사·빈 페이지)는 라벨 없이 그대로 내보냄. 전부 실패면 진짜 악보 아님
+            failed += 1
+            assert failed < len(pages), "오선 못 찾음"
+            notes = []
         if notes_out is not None:
             notes_out.append(notes)
         img = render.overlay(p, core.place_labels(notes, lang, position, mode) + (core.chord_labels(notes) if chords else []))

@@ -49,8 +49,10 @@ def shrink(page):
 def skew_angle(gray, max_deg=3.0):
     """스캔 기울기(도). 오선이 수평이면 행 잉크 투영이 뾰족해짐(제곱합 최대) → 그 각을 찾음.
     1/4 축소본으로 0.25° 거친 탐색 → 0.05° 정밀 탐색."""
-    small = cv2.resize(gray, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
-    ink = (binarize(small) > 0).astype(np.float32)
+    # 축소 후 이진화하면 얇은 오선(1~2px)이 사라지고 두꺼운 빔만 남아, 폭 전체를 가로지르는 비스듬한 32분음표 빔을
+    # 기울어진 오선으로 오인해 멀쩡한 페이지를 2° 돌렸음. 원본에서 이진화 → 축소하면 오선이 살아남는다.
+    small = cv2.resize(binarize(gray), None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    ink = (small > 0).astype(np.float32)
     h, w = ink.shape
     ctr = (w / 2, h / 2)
 
