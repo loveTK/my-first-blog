@@ -180,5 +180,18 @@
  "hero.badge_midi": "Convert to MIDI only",
  "faq.q10": "Is Notalo a sheet music scanner?",
  "faq.a10": "Yes. It scans a photo, scan or PDF of sheet music, reads the notes, and gives you back the same sheet music with letters — plus chord symbols and a MIDI file of what it read. No app to install, free.",
- "tool.lang_num": "Numbers (1 2 3, C=1)"
+ "tool.lang_num": "Numbers (1 2 3, C=1)",
+ "feat.title": "Features",
+ "feat.1_name": "Letters under every note",
+ "feat.1_desc": "Each note gets its letter — C D E, Do Re Mi, ドレミ, German letters or numbers — placed so labels don't overlap.",
+ "feat.2_name": "Chord symbols",
+ "feat.2_desc": "Notalo reads the notes in each bar and prints the chord (C, Am, G7…) in green above the staff.",
+ "feat.3_name": "Sheet music to MIDI",
+ "feat.3_desc": "A practice MIDI of the detected notes with their lengths, at any tempo from 40 to 240 BPM.",
+ "feat.4_name": "Photo or PDF",
+ "feat.4_desc": "Phone photos, scans and multi-page PDFs up to 20MB. No MusicXML, no notation software.",
+ "feat.5_name": "Free, files deleted",
+ "feat.5_desc": "No sign-up, no credits. Uploads and results are deleted right after processing.",
+ "songs.title": "Songs",
+ "songs.open": "Open song"
 }

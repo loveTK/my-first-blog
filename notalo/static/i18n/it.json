@@ -180,5 +180,18 @@
  "hero.badge_midi": "Converti solo in MIDI",
  "faq.q10": "Notalo è uno scanner di spartiti?",
  "faq.a10": "Sì. Legge una foto, una scansione o un PDF dello spartito e te lo restituisce con i nomi delle note, più le sigle degli accordi e un file MIDI di ciò che ha letto. Niente app, gratis.",
- "tool.lang_num": "Numeri (1 2 3, Do=1)"
+ "tool.lang_num": "Numeri (1 2 3, Do=1)",
+ "feat.title": "Funzioni",
+ "feat.1_name": "Nomi sotto ogni nota",
+ "feat.1_desc": "Ogni nota riceve il suo nome — C D E, Do Re Mi, ドレミ, nomi tedeschi o numeri — senza sovrapposizioni.",
+ "feat.2_name": "Sigle degli accordi",
+ "feat.2_desc": "Notalo legge le note di ogni battuta e scrive l'accordo (C, Am, G7…) in verde sopra il pentagramma.",
+ "feat.3_name": "Spartito in MIDI",
+ "feat.3_desc": "Un MIDI di studio delle note rilevate con le loro durate, a qualsiasi tempo da 40 a 240 BPM.",
+ "feat.4_name": "Foto o PDF",
+ "feat.4_desc": "Foto dal telefono, scansioni e PDF di più pagine fino a 20 MB. Niente MusicXML, niente software di notazione.",
+ "feat.5_name": "Gratis, file eliminati",
+ "feat.5_desc": "Nessuna registrazione, nessun credito. Upload e risultati vengono eliminati subito dopo l'elaborazione.",
+ "songs.title": "Brani",
+ "songs.open": "Apri il brano"
 }

@@ -180,5 +180,18 @@
  "hero.badge_midi": "Nur MIDI umwandeln",
  "faq.q10": "Ist Notalo ein Notenscanner?",
  "faq.a10": "Ja. Es liest ein Foto, einen Scan oder ein PDF deiner Noten und gibt dir dieselben Noten mit Notennamen zurück – plus Akkordsymbole und eine MIDI-Datei des Gelesenen. Keine App, kostenlos.",
- "tool.lang_num": "Zahlen (1 2 3, C=1)"
+ "tool.lang_num": "Zahlen (1 2 3, C=1)",
+ "feat.title": "Funktionen",
+ "feat.1_name": "Buchstaben unter jeder Note",
+ "feat.1_desc": "Jede Note bekommt ihren Namen — C D E, Do Re Mi, ドレミ, deutsche Notennamen oder Zahlen — ohne Überlappungen.",
+ "feat.2_name": "Akkordsymbole",
+ "feat.2_desc": "Notalo liest die Noten jedes Takts und schreibt den Akkord (C, Am, G7…) grün über das System.",
+ "feat.3_name": "Noten zu MIDI",
+ "feat.3_desc": "Eine Übungs-MIDI der erkannten Noten mit ihren Längen, in jedem Tempo von 40 bis 240 BPM.",
+ "feat.4_name": "Foto oder PDF",
+ "feat.4_desc": "Handyfotos, Scans und mehrseitige PDFs bis 20 MB. Kein MusicXML, keine Notensoftware.",
+ "feat.5_name": "Kostenlos, Dateien gelöscht",
+ "feat.5_desc": "Keine Anmeldung, keine Credits. Uploads und Ergebnisse werden direkt nach der Verarbeitung gelöscht.",
+ "songs.title": "Lieder",
+ "songs.open": "Lied öffnen"
 }

@@ -180,5 +180,18 @@
  "hero.badge_midi": "Convertir en MIDI seulement",
  "faq.q10": "Notalo est-il un scanner de partitions ?",
  "faq.a10": "Oui. Il lit une photo, un scan ou un PDF de votre partition et vous la renvoie avec le nom des notes, plus les symboles d'accords et un fichier MIDI de ce qu'il a lu. Sans application, gratuit.",
- "tool.lang_num": "Chiffres (1 2 3, Do=1)"
+ "tool.lang_num": "Chiffres (1 2 3, Do=1)",
+ "feat.title": "Fonctionnalités",
+ "feat.1_name": "Le nom sous chaque note",
+ "feat.1_desc": "Chaque note reçoit son nom — C D E, Do Ré Mi, ドレミ, noms allemands ou chiffres — sans chevauchement.",
+ "feat.2_name": "Symboles d'accords",
+ "feat.2_desc": "Notalo lit les notes de chaque mesure et écrit l'accord (C, Am, G7…) en vert au-dessus de la portée.",
+ "feat.3_name": "Partition en MIDI",
+ "feat.3_desc": "Un MIDI d'entraînement des notes détectées avec leurs durées, à n'importe quel tempo de 40 à 240 BPM.",
+ "feat.4_name": "Photo ou PDF",
+ "feat.4_desc": "Photos de téléphone, scans et PDF de plusieurs pages jusqu'à 20 Mo. Ni MusicXML ni logiciel de notation.",
+ "feat.5_name": "Gratuit, fichiers supprimés",
+ "feat.5_desc": "Ni inscription ni crédits. Les fichiers et résultats sont supprimés juste après le traitement.",
+ "songs.title": "Morceaux",
+ "songs.open": "Ouvrir le morceau"
 }

@@ -180,5 +180,18 @@
  "hero.badge_midi": "Converter só em MIDI",
  "faq.q10": "O Notalo é um scanner de partituras?",
  "faq.a10": "Sim. Ele lê uma foto, digitalização ou PDF da partitura e devolve a mesma partitura com o nome das notas, mais cifras dos acordes e um arquivo MIDI do que leu. Sem app, grátis.",
- "tool.lang_num": "Números (1 2 3, Dó=1)"
+ "tool.lang_num": "Números (1 2 3, Dó=1)",
+ "feat.title": "Recursos",
+ "feat.1_name": "Letras sob cada nota",
+ "feat.1_desc": "Cada nota recebe seu nome — C D E, Dó Ré Mi, ドレミ, nomes alemães ou números — sem sobreposição.",
+ "feat.2_name": "Cifras de acordes",
+ "feat.2_desc": "O Notalo lê as notas de cada compasso e escreve o acorde (C, Am, G7…) em verde acima da pauta.",
+ "feat.3_name": "Partitura para MIDI",
+ "feat.3_desc": "Um MIDI de estudo das notas detectadas com suas durações, em qualquer andamento de 40 a 240 BPM.",
+ "feat.4_name": "Foto ou PDF",
+ "feat.4_desc": "Fotos do celular, digitalizações e PDFs de várias páginas até 20 MB. Sem MusicXML nem programa de partitura.",
+ "feat.5_name": "Grátis, arquivos apagados",
+ "feat.5_desc": "Sem cadastro, sem créditos. Os arquivos e resultados são apagados logo após o processamento.",
+ "songs.title": "Músicas",
+ "songs.open": "Abrir música"
 }
