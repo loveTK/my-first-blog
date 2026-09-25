@@ -10,7 +10,7 @@ import time
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from PIL import Image
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from urllib.parse import quote
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
@@ -198,6 +198,86 @@ def job_midi(job_id: str, bpm: int = 90):
     data = core.to_midi(job["notes"], max(40, min(240, bpm)))
     name = os.path.splitext(job["name"])[0] + ".mid"
     return Response(data, media_type="audio/midi", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
+
+# ---------- SEO 랜딩 변형: index.html을 그대로 쓰되 title/H1/설명만 바꿈 (도구·FAQ는 공유, HTML 복사 없음) ----------
+# 검색어(Keyword Planner, 미국): sheet music scanner / scanner app / scanner online free 각 5K, sheet music to midi / pdf sheet to midi 각 5K — 전부 경쟁 낮음.
+PAGES = {
+    "/sheet-music-scanner": {
+        "title": "Sheet Music Scanner – Photo or PDF to Letters and MIDI, Free Online | Notalo",
+        "desc": "Free online sheet music scanner. Snap a photo or upload a PDF; Notalo reads the notes and returns the same sheet music with letters under every note, chord symbols, and a MIDI file. No app to install.",
+        "h1": "Sheet music scanner: photo or PDF in, letters and MIDI out.",
+        "sub": "Scan sheet music with your phone camera or upload a PDF. Notalo reads every note and gives you the sheet back with letters, chord symbols and a MIDI file — online, free, nothing to install.",
+        "extra": """<section class="pad" id="scanner-info">
+  <h2 class="sec-title">What this scanner reads</h2>
+  <p class="sec-sub">Printed sheet music: PDFs exported from notation software, sharp scans, and straight-on phone photos of a printed page. It finds the staff lines, clefs, key signature and every notehead, then works out each pitch and note length.</p>
+  <div class="how-grid">
+    <div class="how-step"><span class="how-num">1</span><h3>Scan or upload</h3><p>Take a photo of the page or upload a PDF (up to 20MB, multi-page OK). Nothing to install.</p></div>
+    <div class="how-step"><span class="how-num">2</span><h3>Notes are recognized</h3><p>Noteheads, clefs, accidentals and key signatures are detected on the image itself — no MusicXML needed.</p></div>
+    <div class="how-step"><span class="how-num">3</span><h3>Download three things</h3><p>Your sheet music with letters (or Do Re Mi) under each note, chord symbols above each bar, and a MIDI file to hear what was read.</p></div>
+  </div>
+  <h2 class="sec-title">Notalo vs. typical sheet music scanner apps</h2>
+  <div class="cmp-wrap"><table class="cmp-table">
+    <thead><tr><th></th><th>Notalo</th><th>Typical scanner apps</th></tr></thead>
+    <tbody>
+      <tr><td>Install</td><td>None — runs in the browser</td><td>Phone app, often paid or subscription</td></tr>
+      <tr><td>Output</td><td>Sheet music with letters + chords + MIDI</td><td>MusicXML or playback only; no letters on the page</td></tr>
+      <tr><td>Price</td><td>Free, ad-supported</td><td>Free tier limited by page count</td></tr>
+      <tr><td>Best for</td><td>Beginners who want to play from the page today</td><td>Musicians editing the score in notation software</td></tr>
+      <tr><td>Weak spot</td><td>Rests, ties and tuplets are not read; handwritten or blurry pages miss notes</td><td>Varies</td></tr>
+    </tbody>
+  </table></div>
+  <p class="cmp-cta"><a class="btn-p" href="#tool">Scan your sheet music →</a></p>
+</section>""",
+    },
+    "/sheet-music-to-midi": {
+        "title": "Sheet Music to MIDI Converter – Free, Online, from a Photo or PDF | Notalo",
+        "desc": "Convert sheet music to MIDI online for free. Upload a photo or PDF; Notalo reads the notes and gives you a MIDI file with pitches, note lengths and your tempo — plus the sheet music with letters under every note.",
+        "h1": "Sheet music to MIDI: upload a photo or PDF, download a MIDI file.",
+        "sub": "Notalo reads the notes on your sheet music and turns them into a MIDI file with the right pitches and note lengths, at the tempo you choose. You also get the sheet back with letters under every note and chord symbols.",
+        "extra": """<section class="pad" id="midi-info">
+  <h2 class="sec-title">How the conversion works</h2>
+  <div class="how-grid">
+    <div class="how-step"><span class="how-num">1</span><h3>Pitches</h3><p>Each notehead is placed on its staff; the clef, key signature and accidentals in the bar decide the pitch. Right hand and left hand go to separate MIDI tracks.</p></div>
+    <div class="how-step"><span class="how-num">2</span><h3>Note lengths</h3><p>Whole, half, quarter, eighth and sixteenth notes are told apart by notehead type, flags and beams; dots make a note half again as long.</p></div>
+    <div class="how-step"><span class="how-num">3</span><h3>Tempo</h3><p>Pick any BPM from 40 to 240 on the result page; the file is regenerated at that speed.</p></div>
+  </div>
+  <h2 class="sec-title">What the MIDI is good for — and its limits</h2>
+  <p class="sec-sub">Use it to hear a piece before you can play it, to practice along at a slow tempo, or to import into notation software or a DAW as a starting point. Rests, ties and tuplets are not detected yet, so the timing can drift in busy passages — check the pitches and the feel, don't treat it as a finished arrangement. Clean printed scores convert best; handwritten or blurry pages miss notes.</p>
+  <p class="cmp-cta"><a class="btn-p" href="#tool">Convert sheet music to MIDI →</a></p>
+</section>""",
+    },
+}
+_INDEX = open(os.path.join(STATIC_DIR, "index.html"), encoding="utf-8").read()
+
+
+def _variant(path):
+    v, h = PAGES[path], _INDEX
+    url = "https://notalo.xyz" + path
+    h = h.replace('<html lang="en">', '<html lang="en" data-page="1">', 1)  # JS가 title/description을 i18n으로 덮어쓰지 않게
+    h = re.sub(r"<title>.*?</title>", f"<title>{v['title']}</title>", h, count=1)
+    for a in ('name="description"', 'property="og:description"', 'name="twitter:description"'):
+        h = re.sub(rf'(<meta {a} content=")[^"]*(")', lambda m: m.group(1) + v["desc"] + m.group(2), h)
+    for a in ('property="og:title"', 'name="twitter:title"'):
+        h = re.sub(rf'(<meta {a} content=")[^"]*(")', lambda m: m.group(1) + v["title"] + m.group(2), h)
+    h = h.replace('<link rel="canonical" href="https://notalo.xyz/">', f'<link rel="canonical" href="{url}">')
+    h = h.replace('<meta property="og:url" content="https://notalo.xyz/">', f'<meta property="og:url" content="{url}">')
+    h = re.sub(r'<link rel="alternate" hreflang="[^"]*" href="[^"]*">\n', "", h)  # 영어 전용 페이지
+    h = re.sub(r'<h1 data-i18n="hero.h1">.*?</h1>', f"<h1>{v['h1']}</h1>", h, count=1)  # data-i18n 제거 → 언어 바꿔도 안 덮임
+    h = re.sub(r'<p class="lead" data-i18n="hero.sub">.*?</p>', f'<p class="lead">{v["sub"]}</p>', h, count=1)
+    h = h.replace('<section class="pad" id="demo">', v["extra"] + '\n\n<section class="pad" id="demo">', 1)
+    assert v["h1"] in h and v["extra"] in h and url in h
+    return h
+
+
+@app.get("/sheet-music-scanner")
+def page_scanner():
+    return HTMLResponse(_variant("/sheet-music-scanner"))
+
+
+@app.get("/sheet-music-to-midi")
+def page_midi():
+    return HTMLResponse(_variant("/sheet-music-to-midi"))
 
 
 @app.get("/processing")
