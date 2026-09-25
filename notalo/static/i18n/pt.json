@@ -176,8 +176,8 @@
  "faq.a8": "Sim. Após a conversão, baixe um MIDI de prática com as notas detectadas e suas durações (de semibreve a semicolcheia, pontuadas) no andamento que quiser. Pausas e ligaduras não são detectadas: use para conferir as alturas e cantar junto, não como arranjo final.",
  "faq.q9": "Também adiciona as cifras dos acordes?",
  "faq.a9": "Sim. O Notalo lê as notas de cada compasso, deduz o acorde (C, Am, G7…) e escreve em verde acima da pauta: útil para acompanhar. É uma estimativa a partir das notas escritas; se não precisar, desmarque a caixa.",
- "hero.badge_chords": "Cifras de acordes",
- "hero.badge_midi": "MIDI de prática",
+ "hero.badge_chords": "Converter só em cifras",
+ "hero.badge_midi": "Converter só em MIDI",
  "faq.q10": "O Notalo é um scanner de partituras?",
  "faq.a10": "Sim. Ele lê uma foto, digitalização ou PDF da partitura e devolve a mesma partitura com o nome das notas, mais cifras dos acordes e um arquivo MIDI do que leu. Sem app, grátis.",
  "tool.lang_num": "Números (1 2 3, Dó=1)"

@@ -176,8 +176,8 @@
  "faq.a8": "Sí. Tras la conversión descargas un MIDI de práctica con las notas detectadas y su duración (de redonda a semicorchea, con puntillo) al tempo que quieras. Los silencios y ligaduras no se detectan: úsalo para comprobar las alturas y cantar, no como arreglo final.",
  "faq.q9": "¿También añade el cifrado de acordes?",
  "faq.a9": "Sí. Notalo lee las notas de cada compás, deduce el acorde (C, Am, G7…) y lo escribe en verde sobre el pentagrama: útil para acompañar. Es una estimación a partir de las notas escritas; si no lo necesitas, desmarca la casilla.",
- "hero.badge_chords": "Cifrado de acordes",
- "hero.badge_midi": "MIDI de práctica",
+ "hero.badge_chords": "Convertir solo a acordes",
+ "hero.badge_midi": "Convertir solo a MIDI",
  "faq.q10": "¿Notalo es un escáner de partituras?",
  "faq.a10": "Sí. Lee una foto, un escaneo o un PDF de la partitura y te la devuelve con los nombres de las notas, más el cifrado de acordes y un archivo MIDI de lo que leyó. Sin app, gratis.",
  "tool.lang_num": "Números (1 2 3, Do=1)"

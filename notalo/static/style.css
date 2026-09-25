@@ -42,7 +42,8 @@ nav .btn-o{padding:8px 14px;font-size:11px}
 .hero .cta{display:flex;flex-direction:column;align-items:center;gap:14px}
 .hero .fmt{font-size:12px;letter-spacing:.06em;color:var(--muted)}
 .badges{display:flex;justify-content:center;gap:0;margin-top:22px;flex-wrap:wrap}
-.badge{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;color:var(--muted);padding:0 16px}
+.badge{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:17px;color:var(--muted);padding:0 16px;border:0;background:none;text-transform:none;letter-spacing:0;white-space:nowrap}
+.badge:hover{color:var(--accent-ink)}
 .badge+.badge{border-left:1px solid var(--line)}
 .hero figure{margin:0 auto;max-width:760px;padding:22px 20px 16px;background:var(--panel);border:1px solid var(--line);box-shadow:0 30px 60px -40px rgba(0,0,0,.5)}
 .hero img{display:block;width:100%;height:auto;background:#fff;border:1px solid var(--line-2)}

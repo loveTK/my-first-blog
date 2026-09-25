@@ -738,7 +738,7 @@ def place_labels(notes, lang, position, mode="greedy"):
     lane: 오선 아래(위) 레인에 x 겹침 없이 층층이. 라벨끼리 절대 안 겹침.
     overlay: 머리 위에 덮어씀."""
     assert position in ("below", "above") and mode in ("greedy", "lane", "overlay"), (position, mode)
-    if not notes:
+    if lang == "none" or not notes:  # "none" = 랜딩의 "코드로 변환"/"MIDI로 변환" 버튼: 글자 없이 코드만(또는 아무 라벨 없이)
         return []
     import render
     ss = notes[0]["ss"]

@@ -201,6 +201,7 @@ const credits = async () => { try { const d = await (await fetch('/credits')).js
 
 // ---------- job 폴링 ----------
 const jobId = new URLSearchParams(location.search).get('job');
+const outputMode = new URLSearchParams(location.search).get('output') || '';  // 'midi'|'chords'|'' — 랜딩의 "~로만 변환" 버튼에서 옴
 const t0 = Date.now();
 // 업로드 화면에서 남겨둔 축소 미리보기가 있으면 흐릿한 배경 + 스캔선으로 보여줌(내 브라우저에만 있던 것, 한 번 쓰고 바로 지움)
 try {
@@ -241,23 +242,29 @@ const poll = async () => {
     const d = await r.json();
     if (d.done !== done || d.total !== total) { done = d.done; total = d.total; pageT0 = Date.now(); }
     if (d.status === 'processing') {
-      if (d.done >= 1) showMidi();  // 라벨 이미지가 다 끝나기 전에도 처리된 페이지만큼 MIDI 바로 받기
+      if (d.done >= 1 && outputMode !== 'chords') showMidi();  // 라벨 이미지가 다 끝나기 전에도 처리된 페이지만큼 MIDI 바로 받기
       setTimeout(poll, 1200); return;
     }
     if (d.status === 'error') { showError(d.detail || t('tool.status_no_staff')); return; }
     // done
+    clearInterval(timer); pct = 100; $('bar-fill').style.width = '100%'; $('pct').textContent = '100%'; document.title = '✓ Notalo';
+    show($('busy'), false); show($('result'), true);
+    if (outputMode === 'midi') {  // MIDI만 변환: 라벨 이미지는 내려받지 않음(크레딧도 안 씀), MIDI 카드만
+      showMidi();
+      gtag('event', 'convert_done', { file_type: 'midi_only', seconds: Math.round((Date.now() - t0) / 1000) });
+      return;
+    }
     const rr = await fetch(`/jobs/${jobId}/result`);
     if (!rr.ok) { showError(t('tool.status_no_staff')); return; }
     const isPdf = rr.headers.get('Content-Type') === 'application/pdf';
     const b = await rr.blob(), u = URL.createObjectURL(b);
     const savedName = localStorage.getItem('notalo_filename') || 'sheet';
     const dl = $('dl'); dl.href = u; dl.download = savedName.replace(/\.(\w+)$/, '_plus.$1') || 'result';
-    clearInterval(timer); pct = 100; $('bar-fill').style.width = '100%'; $('pct').textContent = '100%'; document.title = '✓ Notalo';
-    show($('busy'), false); show($('result'), true); show($('pdfnote'), isPdf);
+    show($('pdfnote'), isPdf);
     $('img').src = isPdf ? rr.headers.get('X-Preview') : u; show($('img'), true); show(dl, true);
     gtag('event', 'convert_done', { file_type: isPdf ? 'pdf' : 'image', seconds: Math.round((Date.now() - t0) / 1000) });
     dl.onclick = () => gtag('event', 'download', { file_type: isPdf ? 'pdf' : 'image' });
-    showMidi();  // 처리 중에 이미 떴을 수 있음 — 안 떴으면(빠른 단일 페이지 등) 여기서
+    if (outputMode !== 'chords') showMidi();  // 코드만 모드는 이미지가 곧 결과물이라 MIDI 카드는 안 띄움
   } catch (_) { showError(t('tool.status_no_staff')); }
 };
 

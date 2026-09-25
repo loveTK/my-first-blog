@@ -176,8 +176,8 @@
  "faq.a8": "Yes. After conversion, download a practice MIDI of the detected notes with their lengths (whole to sixteenth, dotted) at any tempo. Rests and ties aren't detected, so use it to check pitches and sing along rather than as a finished arrangement.",
  "faq.q9": "Does it add chord symbols?",
  "faq.a9": "Yes. Notalo reads the notes in each measure, works out the chord (C, Am, G7…) and prints it in green above the staff — handy for accompaniment. It's a best guess from the written notes; turn it off with the checkbox if you don't need it.",
- "hero.badge_chords": "Chord symbols",
- "hero.badge_midi": "Sheet music to MIDI",
+ "hero.badge_chords": "Convert to chords only",
+ "hero.badge_midi": "Convert to MIDI only",
  "faq.q10": "Is Notalo a sheet music scanner?",
  "faq.a10": "Yes. It scans a photo, scan or PDF of sheet music, reads the notes, and gives you back the same sheet music with letters — plus chord symbols and a MIDI file of what it read. No app to install, free.",
  "tool.lang_num": "Numbers (1 2 3, C=1)"

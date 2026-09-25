@@ -176,8 +176,8 @@
  "faq.a8": "Oui. Après la conversion, téléchargez un MIDI d'entraînement avec les notes détectées et leur durée (de la ronde à la double croche, pointées) au tempo de votre choix. Silences et liaisons ne sont pas détectés : servez-vous-en pour vérifier les hauteurs et chanter, pas comme arrangement final.",
  "faq.q9": "Ajoute-t-il aussi les symboles d'accords ?",
  "faq.a9": "Oui. Notalo lit les notes de chaque mesure, en déduit l'accord (C, Am, G7…) et l'écrit en vert au-dessus de la portée : pratique pour accompagner. C'est une estimation à partir des notes écrites ; décochez la case si vous n'en avez pas besoin.",
- "hero.badge_chords": "Symboles d'accords",
- "hero.badge_midi": "MIDI d'entraînement",
+ "hero.badge_chords": "Convertir en accords seulement",
+ "hero.badge_midi": "Convertir en MIDI seulement",
  "faq.q10": "Notalo est-il un scanner de partitions ?",
  "faq.a10": "Oui. Il lit une photo, un scan ou un PDF de votre partition et vous la renvoie avec le nom des notes, plus les symboles d'accords et un fichier MIDI de ce qu'il a lu. Sans application, gratuit.",
  "tool.lang_num": "Chiffres (1 2 3, Do=1)"

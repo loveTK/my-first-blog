@@ -66,8 +66,8 @@ gtag('config', 'G-YKTS1ZLM3G');
       <span class="fmt" data-i18n="hero.fmt">PDF · JPG · PNG. Files are deleted right after processing.</span>
     </div>
     <div class="badges">
-      <span class="badge" data-i18n="hero.badge_chords">Chord symbols</span>
-      <span class="badge" data-i18n="hero.badge_midi">Sheet music to MIDI</span>
+      <button class="badge" type="button" id="badge-chords" data-i18n="hero.badge_chords">Convert to chords only</button>
+      <button class="badge" type="button" id="badge-midi" data-i18n="hero.badge_midi">Convert to MIDI only</button>
     </div>
   </div>
   <figure>
@@ -279,6 +279,9 @@ const saveBgPreview = f => {
 };
 drop.onclick = () => file.click();
 $('hero-go').onclick = () => { file.click(); $('tool').scrollIntoView({ block: 'start' }); };
+const quickConvert = kind => { sessionStorage.setItem('notalo_output', kind); file.click(); $('tool').scrollIntoView({ block: 'start' }); };
+$('badge-chords').onclick = () => quickConvert('chords');
+$('badge-midi').onclick = () => quickConvert('midi');
 $('demo-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
 $('compare-go').onclick = () => { $('tool').scrollIntoView({ block: 'start' }); };
 drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } };
@@ -374,9 +377,14 @@ $('f').onsubmit = async e => {
   if (!file.files[0]) { s.className = 'status err'; s.textContent = t('tool.status_pick_file'); return; }
   if (file.files.length > 1) { s.className = 'status err'; s.textContent = t('tool.status_one_file'); return; }
   go.disabled = true; s.className = 'status'; s.textContent = t('tool.status_uploading');
-  gtag('event', 'convert_start', { file_type: file.files[0].name.split('.').pop().toLowerCase(), label_lang: $('lang').value, position: $('position').value, layout: $('mode').value, chords: $('chords').checked, ui_lang: currentLang });
+  const outputMode = sessionStorage.getItem('notalo_output') || '';  // 랜딩의 "코드로만/MIDI로만 변환" 버튼으로 왔으면 글자 라벨 생략
+  sessionStorage.removeItem('notalo_output');
+  gtag('event', 'convert_start', { file_type: file.files[0].name.split('.').pop().toLowerCase(), label_lang: $('lang').value, position: $('position').value, layout: $('mode').value, chords: $('chords').checked, ui_lang: currentLang, output: outputMode || 'full' });
   try {
-    const r = await fetch('/jobs', { method: 'POST', body: new FormData($('f')) });
+    const fd = new FormData($('f'));
+    if (outputMode === 'chords') { fd.set('lang', 'none'); fd.set('chords', 'on'); }
+    else if (outputMode === 'midi') { fd.set('lang', 'none'); fd.set('chords', ''); }
+    const r = await fetch('/jobs', { method: 'POST', body: fd });
     if (!r.ok) {
       let m = t('tool.status_fail');
       try { const j = await r.json(); if (j.detail) m = j.detail; } catch (_) {}
@@ -384,7 +392,7 @@ $('f').onsubmit = async e => {
     }
     const { id } = await r.json();
     localStorage.setItem('notalo_filename', file.files[0].name);
-    location.href = `/processing?job=${id}`;
+    location.href = `/processing?job=${id}${outputMode ? '&output=' + outputMode : ''}`;
   } catch (err) {
     gtag('event', 'convert_error', { stage: 'upload', reason: err.message.slice(0, 80) });
     s.className = 'status err'; s.textContent = err.message; go.disabled = false;
