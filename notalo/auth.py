@@ -61,6 +61,9 @@ class _Conn:
                          "google INT DEFAULT 0, credits INT DEFAULT 0, created REAL)")
         self.con.execute("CREATE TABLE IF NOT EXISTS guests(fp TEXT PRIMARY KEY, used INT DEFAULT 0, first REAL)")
         self.con.execute("CREATE TABLE IF NOT EXISTS orders(id TEXT PRIMARY KEY, email TEXT, plan TEXT, usd TEXT, created REAL)")
+        # 변환 1건당 1행. 파일 내용은 안 남김(GA에는 이벤트 수만 있고 원인·페이지 수·소요시간이 없어서 서버가 직접 기록)
+        self.con.execute("CREATE TABLE IF NOT EXISTS conversions(ts REAL, ok INT, pages INT, notes INT, seconds REAL, ext TEXT, lang TEXT, "
+                         "position TEXT, err TEXT, user TEXT, country TEXT)")
         self.con.commit()
         self.n0 = self.con.total_changes
         return self.con
@@ -132,6 +135,23 @@ def guest_mark(request, resp):
         con.execute("INSERT INTO guests(fp,used,first) VALUES(?,?,?) ON CONFLICT(fp) DO UPDATE SET used=?",
                     (fingerprint(request), used, time.time(), used))
     resp.set_cookie("nt_used", f"{used}.{_sig(str(used))}", max_age=365 * 24 * 3600, httponly=True, samesite="lax")
+
+
+def who(request):
+    """변환 기록용 식별자: 로그인 이메일, 아니면 guest:지문 앞 8자. 내 변환은 이메일로 빼고 본다."""
+    return current_user(request) or "guest:" + fingerprint(request)[:8]
+
+
+def log_conversion(row):
+    with db() as con:
+        con.execute("INSERT INTO conversions VALUES(:ts,:ok,:pages,:notes,:seconds,:ext,:lang,:position,:err,:user,:country)", row)
+
+
+def conversions(days, exclude=""):
+    with db() as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute("SELECT * FROM conversions WHERE ts>? AND user NOT LIKE ? ORDER BY ts", (time.time() - days * 86400, exclude or "\0")).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ---- 크레딧 (app.py가 씀) ----

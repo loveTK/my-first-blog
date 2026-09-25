@@ -140,16 +140,24 @@ def _process(src, out, ext, lang, position, mode, progress=lambda done, total: N
 
 
 def _run_job(job_id, src, ext, lang, position, mode, chords):
+    job, err = _jobs[job_id], ""
     try:
         def progress(done, total):
-            _jobs[job_id].update(done=done, total=total)  # 진행률 막대용
+            job.update(done=done, total=total)  # 진행률 막대용
         out = os.path.join(os.path.dirname(src), "out" + ext)
-        notes = _jobs[job_id]["notes"]  # _process가 페이지마다 append → MIDI가 완료 전에도 처리된 페이지만큼 바로 나옴
+        notes = job["notes"]  # _process가 페이지마다 append → MIDI가 완료 전에도 처리된 페이지만큼 바로 나옴
         preview = _process(src, out, ext, lang, position, mode, progress, notes, chords)
-        _jobs[job_id].update(status="done", out=out, preview=preview)
-    except Exception:
-        shutil.rmtree(_jobs[job_id].get("tmp", ""), ignore_errors=True)
-        _jobs[job_id].update(status="error")
+        job.update(status="done", out=out, preview=preview)
+    except Exception as e:
+        err = f"{type(e).__name__}: {e}"[:80]
+        shutil.rmtree(job.get("tmp", ""), ignore_errors=True)
+        job.update(status="error")
+    try:
+        auth.log_conversion({"ts": time.time(), "ok": int(not err), "pages": job["total"], "notes": sum(len(n) for n in job["notes"]),
+                             "seconds": round(time.time() - job["created"], 1), "ext": ext, "lang": lang, "position": position, "err": err,
+                             "user": job["who"], "country": job["country"]})
+    except Exception as e:  # 기록 실패로 변환이 죽으면 안 됨
+        print(f"[log] {type(e).__name__}: {e}", flush=True)
 
 
 @app.post("/jobs")
@@ -170,7 +178,8 @@ async def create_job(request: Request, file: UploadFile, lang: str = Form("ko"),
         f.write(data)
     name = os.path.splitext(file.filename)[0] + "_plus" + ext
     job_id = secrets.token_urlsafe(16)
-    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0, "notes": []}
+    _jobs[job_id] = {"status": "processing", "tmp": tmp, "name": name, "created": time.time(), "done": 0, "total": 0, "notes": [],
+                     "who": auth.who(request), "country": request.headers.get("cf-ipcountry", "")}  # Cloudflare 프록시가 붙여주는 국가 코드
     threading.Thread(target=_run_job, args=(job_id, src, ext, lang, position, mode, bool(chords)), daemon=True).start()
     return {"id": job_id}
 
@@ -393,6 +402,14 @@ def _localized(code):
         h = h.replace("/hero/sample_en.webp", f"/hero/sample_{code}.webp")  # og:image + 히어로 이미지
     assert url in h
     return h
+
+
+@app.get("/admin/stats")
+def admin_stats(key: str, days: int = 7, exclude: str = ""):
+    """변환 기록 JSON. key=NOTALO_SECRET, exclude=내 이메일(LIKE 패턴) → 실제 사용자만."""
+    if not secrets.compare_digest(key.encode(), auth.SECRET):
+        raise HTTPException(404)
+    return auth.conversions(days, exclude)
 
 
 @app.get("/")
