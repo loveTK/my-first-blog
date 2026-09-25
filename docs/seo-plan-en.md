@@ -225,6 +225,22 @@ sitemap에 전부 추가. 각 페이지 JSON-LD `MusicComposition` + `HowTo`.
 
 ---
 
+## 10. 진행 상황 (2026-09-25)
+
+| Phase | 상태 | 커밋 |
+|---|---|---|
+| 0 문구 교체 | ✅ | `364b67c` |
+| 1 스캐너·MIDI 페이지 | ✅ `/sheet-music-scanner`, `/sheet-music-to-midi` | `ebdb124` |
+| 3 읽는 법 가이드 + 차트 | ✅ `/how-to-read-sheet-music`, `/treble-clef-notes`, `/bass-clef-notes` | `ef4cfaa` |
+| 4 숫자 옵션 | ✅ | `ef4cfaa` |
+| 2·5 곡 페이지 | ✅ 13곡 (`/letter-notes/<slug>`, 허브 `/letter-notes`, `/christmas-piano-songs-with-letters`) | 이번 커밋 |
+
+곡 페이지 만드는 법: `songs/<slug>.ly`(절대음정으로 직접 입력, `\relative` 금지 — 옥타브 흘러내림) + `songs.py` 메타 → `python tools/build_songs.py <slug>` → `static/songs/<slug>.{png,mid,json}` 커밋. lilypond 필요(서버엔 없음).
+
+저작권 결정 기록: Carol of the Bells 제외(영어 가사·편곡 저작권 2031년까지). 저작권 곡(Harry Potter, Interstellar, River Flows in You 등)은 안내 페이지도 안 만듦. 비교표에 경쟁사 이름 안 씀. 남은 PD 곡 2개(O Holy Night, Clair de Lune)는 멜로디 전체를 확실히 검증한 뒤 추가.
+
+---
+
 ## 9. 가입/관리 서비스 계정 (최신판은 CLAUDE.md)
 
 | 서비스 | 역할(초등학생 설명) |

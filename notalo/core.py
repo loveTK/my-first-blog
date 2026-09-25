@@ -555,6 +555,13 @@ def detect_notes(page_rgb):
     heads = kept
     assign_pitches(ink, staves, dets, heads)
     assert all("pitch" in h for h in heads)
+    # 같은 오선·같은 음이 x 0.8ss 안에 둘 = 한 머리에 상자 2개(위 dedupe 기준 0.5ss에 걸친 것). 연속 같은 음은 머리 폭 때문에 1.5ss는 떨어짐
+    heads.sort(key=lambda h: -h["conf"])
+    kept = []
+    for h in heads:
+        if not any(k["staff"] == h["staff"] and k["pitch"] == h["pitch"] and abs(k["x"] - h["x"]) < 0.8 * ss for k in kept):
+            kept.append(h)
+    heads = kept
     note_durations(ink, staves, heads, ss, dets)
     sysid = _systems(ink, staves)
     # ss/staff_top/staff_bot은 7단계 라벨 배치용, system은 MIDI 순서(같은 시스템의 오선은 x로 같이 읽음)

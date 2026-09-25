@@ -1,5 +1,6 @@
 """POST /convert (file, lang, position) → [원본]_plus.[ext]. 서버 저장 없음."""
 import collections
+import json
 import os
 import re
 import secrets
@@ -288,6 +289,67 @@ GUIDES = {"/how-to-read-sheet-music": "guide-read.html", "/treble-clef-notes": "
 @app.get("/bass-clef-notes")
 def guide_page(request: Request):
     return FileResponse(os.path.join(STATIC_DIR, GUIDES[request.url.path]))
+
+
+# ---------- 곡 페이지: songs.py 메타 + static/songs/<slug>.{png,mid,json} (tools/build_songs.py 산출물) → static/song.html 템플릿 ----------
+from songs import SONGS  # noqa: E402
+
+_SONG_TPL = open(os.path.join(STATIC_DIR, "song.html"), encoding="utf-8").read()
+
+
+def _song_page(slug):
+    m, d = SONGS[slug], json.load(open(os.path.join(STATIC_DIR, "songs", slug + ".json"), encoding="utf-8"))
+    url = f"https://notalo.xyz/letter-notes/{slug}"
+    year = m.get("year_text", str(m["year"]))
+    ld = [{"@context": "https://schema.org", "@type": "MusicComposition", "name": m["title"], "composer": {"@type": "Person", "name": m["composer"]},
+           "musicalKey": m["key"], "inLanguage": "en", "url": url, "image": f"https://notalo.xyz/songs/{slug}.png", "license": "https://creativecommons.org/publicdomain/mark/1.0/"},
+          {"@context": "https://schema.org", "@type": "Article", "headline": f"{m['title']} piano notes with letters", "url": url, "inLanguage": "en", "datePublished": "2026-09-25",
+           "author": {"@type": "Organization", "name": "Notalo"}, "publisher": {"@type": "Organization", "name": "Notalo", "url": "https://notalo.xyz/"}}]
+    related = " · ".join(f'<a href="/letter-notes/{k}">{v["title"]}</a>' for k, v in SONGS.items() if k != slug)
+    rep = {"TITLE": m["title"], "SLUG": slug, "URL": url, "KEY": m["key"], "TIME": m["time"], "BPM": str(m["bpm"]), "COMPOSER": m["composer"], "YEAR": year,
+           "INTRO": m["intro"], "W": str(d["w"]), "H": str(d["h"]), "LD": json.dumps(ld, ensure_ascii=False).replace("</", "<\\/"),
+           "BARS": "\n  ".join(f"<tr><td>{b['n']}</td><td>{b['chord']}</td><td>{b['rh']}</td></tr>" for b in d["bars"]),
+           "TIPS": "\n  ".join(f"<li>{t}</li>" for t in m["tips"]), "RELATED": related}
+    h = _SONG_TPL
+    for k, v in rep.items():
+        h = h.replace("{{" + k + "}}", v)
+    assert "{{" not in h, slug
+    return h
+
+
+@app.get("/letter-notes/{slug}")
+def song_page(slug: str):
+    if slug not in SONGS or not os.path.exists(os.path.join(STATIC_DIR, "songs", slug + ".json")):
+        raise HTTPException(404)
+    return HTMLResponse(_song_page(slug))
+
+
+def _hub(title, desc, url, intro, items):
+    lis = "".join(f'<li><a href="/letter-notes/{k}"><strong>{v["title"]}</strong></a> — {v["composer"]}, {v["key"]}, {v["time"]}</li>' for k, v in items)
+    ld = json.dumps({"@context": "https://schema.org", "@type": "CollectionPage", "name": title, "url": url, "inLanguage": "en"}).replace("</", "<\\/")
+    body = f'<p class="toc"><a href="/">Notalo</a> › {title}</p><h1>{title}</h1><p class="lead">{intro}</p><ul>{lis}</ul>' \
+           '<div class="cta"><p><strong>Your own sheet music?</strong> Upload a photo or PDF and get it back with letters under every note, chords and a MIDI file.</p><a class="btn-p" href="/#tool">Add letters to my sheet music</a></div>'
+    h = _SONG_TPL.split("<main class=\"article\">")[0] + '<main class="article">' + body + "</main>" + _SONG_TPL.split("</main>")[1]
+    h = re.sub(r"<title>.*?</title>", f"<title>{title} | Notalo</title>", h, count=1)
+    h = re.sub(r'(<meta name="description" content=")[^"]*(")', lambda mm: mm.group(1) + desc + mm.group(2), h)
+    h = re.sub(r'<meta property="og:[^>]*>', "", h)
+    h = re.sub(r'<link rel="canonical" href="[^"]*">', f'<link rel="canonical" href="{url}">', h)
+    h = re.sub(r'<script type="application/ld\+json">.*?</script>', f'<script type="application/ld+json">{ld}</script>', h, count=1)
+    return h
+
+
+@app.get("/letter-notes")
+def songs_hub():
+    return HTMLResponse(_hub("Easy piano songs with letters", "Free easy piano sheet music with the letter written under every note, chord symbols and a MIDI file for each song. Public-domain melodies arranged by Notalo.",
+                             "https://notalo.xyz/letter-notes", "Each song below is a public-domain melody arranged for easy piano, with the letter under every note (right hand red, left hand blue), chord symbols, a bar-by-bar letter list, and a MIDI file. Free to print.",
+                             [(k, v) for k, v in SONGS.items() if os.path.exists(os.path.join(STATIC_DIR, "songs", k + ".json"))]))
+
+
+@app.get("/christmas-piano-songs-with-letters")
+def christmas_hub():
+    return HTMLResponse(_hub("Christmas piano songs with letters", "Easy Christmas piano sheet music with letters under every note: Jingle Bells, Silent Night, Deck the Halls, We Wish You a Merry Christmas. Chords and MIDI included. Free.",
+                             "https://notalo.xyz/christmas-piano-songs-with-letters", "Traditional Christmas carols for easy piano, each with the letter under every note, chord symbols and a MIDI file to hear it. All public domain, no lyrics, free to print for lessons and family singalongs.",
+                             [(k, v) for k, v in SONGS.items() if v.get("christmas") and os.path.exists(os.path.join(STATIC_DIR, "songs", k + ".json"))]))
 
 
 @app.get("/processing")
