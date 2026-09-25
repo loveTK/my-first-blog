@@ -1,0 +1,9 @@
+opencv-python
+numpy
+pillow
+pdf2image
+fastapi
+uvicorn
+python-multipart
+onnxruntime
+boto3

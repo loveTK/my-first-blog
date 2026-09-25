@@ -1,0 +1,203 @@
+<title>Notalo Vintage Desk</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Sans+KR:wght@300;400;500&display=swap">
+<style>
+:root{
+  --paper:#EBE1CC;--paper-2:#E2D6BD;--ink:#2A2118;--ink-2:#6B5B49;--rule:#B9A784;--rule-2:#D6C9AB;
+  --red:#8E3B2D;--blue:#34435E;--green:#4E5F3C;--gold:#9B7B3A;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#1E1813;--paper-2:#262019;--ink:#E9DEC6;--ink-2:#A89A82;--rule:#4E4232;--rule-2:#332B22;
+  --red:#C9705C;--blue:#8FA3C9;--green:#9CB07E;--gold:#C9A65C;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#1E1813;--paper-2:#262019;--ink:#E9DEC6;--ink-2:#A89A82;--rule:#4E4232;--rule-2:#332B22;
+  --red:#C9705C;--blue:#8FA3C9;--green:#9CB07E;--gold:#C9A65C;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.7 "IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;font-weight:300;
+  background-image:
+    radial-gradient(ellipse at 20% 0%,rgba(255,255,255,.18),transparent 60%),
+    radial-gradient(ellipse at 100% 100%,rgba(0,0,0,.08),transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{max-width:920px;margin:0 auto;padding:0 20px}
+h1,h2,h3,.serif{font-family:"Cormorant Garamond",Georgia,serif;font-weight:400;letter-spacing:.005em;text-wrap:balance}
+a{color:inherit}
+.eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-2)}
+hr.rule{border:0;height:1px;background:var(--rule);margin:0}
+
+/* nav */
+header{display:flex;align-items:center;justify-content:space-between;padding:26px 0 18px;border-bottom:1px solid var(--rule)}
+.brand{font-family:"Cormorant Garamond",serif;font-size:26px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;font-weight:500}
+nav{display:flex;gap:28px;align-items:center}
+nav a{font-size:11px;letter-spacing:.2em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding-bottom:2px;border-bottom:1px solid transparent}
+nav a:hover{color:var(--ink);border-color:var(--ink)}
+nav .lang{font-size:11px;letter-spacing:.14em;color:var(--ink-2);border:1px solid var(--rule);padding:6px 10px;background:none;font-family:inherit}
+
+/* hero */
+.hero{padding:92px 0 72px;text-align:center}
+.hero h1{font-size:clamp(38px,6vw,64px);line-height:1.08;margin:18px auto 22px;max-width:16ch;font-weight:300}
+.hero h1 em{font-style:italic;color:var(--red)}
+.hero p{max-width:52ch;margin:0 auto 34px;color:var(--ink-2);font-size:17px}
+.btn{display:inline-block;font-size:12px;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;padding:15px 34px;border:1px solid var(--ink);color:var(--ink);background:none;font-family:inherit;cursor:pointer;transition:background .2s,color .2s}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.fill{background:var(--ink);color:var(--paper)}
+.btn.fill:hover{background:var(--red);border-color:var(--red)}
+.fmt{display:block;margin-top:16px;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+
+/* staff figure */
+.staff{margin:64px auto 0;max-width:760px;padding:34px 28px 26px;background:var(--paper-2);border:1px solid var(--rule);box-shadow:0 30px 60px -40px rgba(0,0,0,.5)}
+.staff svg{display:block;width:100%;height:auto}
+.staff figcaption{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:16px;color:var(--ink-2);text-align:center;margin-top:12px}
+
+/* sections */
+section{padding:88px 0 0}
+.sec-head{text-align:center;margin-bottom:44px}
+.sec-head h2{font-size:38px;margin:10px 0 8px;font-weight:300}
+.sec-head p{color:var(--ink-2);margin:0 auto;max-width:56ch}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.step{padding:34px 26px;border-right:1px solid var(--rule)}
+.step:last-child{border-right:0}
+.step .n{font-family:"Cormorant Garamond",serif;font-size:44px;line-height:1;color:var(--gold);font-weight:300}
+.step h3{font-size:24px;margin:14px 0 6px}
+.step p{margin:0;color:var(--ink-2);font-size:15px}
+
+/* tool */
+.tool{max-width:720px;margin:0 auto}
+.drop{border:1px solid var(--ink);padding:56px 24px;text-align:center;background:var(--paper-2);position:relative}
+.drop::before{content:"";position:absolute;inset:6px;border:1px solid var(--rule)}
+.drop strong{display:block;font-family:"Cormorant Garamond",serif;font-size:26px;font-weight:400;margin-bottom:6px}
+.drop span{font-size:13px;color:var(--ink-2);letter-spacing:.04em}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin:30px 0 26px}
+.opts label{display:block;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);margin-bottom:8px}
+.opts select{width:100%;font:inherit;font-size:15px;color:var(--ink);background:none;border:0;border-bottom:1px solid var(--ink);padding:8px 0;border-radius:0;appearance:none}
+.act{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.act small{color:var(--ink-2);font-size:13px}
+
+/* compare */
+table{width:100%;border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:15px 12px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+th{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-2);font-weight:400;border-bottom:1px solid var(--rule)}
+td:first-child{color:var(--ink-2);white-space:nowrap;width:1%;font-size:13px;letter-spacing:.04em}
+th:nth-child(2){color:var(--red)}
+
+/* faq */
+details{border-bottom:1px solid var(--rule-2);padding:18px 0}
+details:first-of-type{border-top:1px solid var(--rule)}
+summary{cursor:pointer;list-style:none;font-family:"Cormorant Garamond",serif;font-size:22px;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--ink-2)}
+details[open] summary::after{content:"–"}
+details p{margin:10px 0 0;color:var(--ink-2);font-size:15px;max-width:66ch}
+
+footer{margin-top:96px;padding:30px 0 48px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);letter-spacing:.04em}
+footer .links{display:flex;gap:18px;flex-wrap:wrap}
+footer a{text-decoration:none}
+footer a:hover{color:var(--ink)}
+
+@media(max-width:720px){
+  nav .hide{display:none}
+  .hero{padding:60px 0 48px}
+  .steps{grid-template-columns:1fr}
+  .step{border-right:0;border-bottom:1px solid var(--rule)}
+  .step:last-child{border-bottom:0}
+  .opts{grid-template-columns:1fr}
+  .staff{padding:22px 14px 18px}
+  .cmp{overflow-x:auto}
+}
+:is(a,button,select,summary):focus-visible{outline:1px solid var(--red);outline-offset:3px}
+</style>
+
+<div class="wrap">
+<header>
+  <a class="brand" href="#">Notalo</a>
+  <nav>
+    <a class="hide" href="#how">How it works</a>
+    <a class="hide" href="#demo">Demo</a>
+    <a class="hide" href="#compare">Compare</a>
+    <button class="lang" type="button">EN</button>
+    <a href="#">Sign in</a>
+  </nav>
+</header>
+
+<section class="hero" style="padding-top:92px">
+  <div class="eyebrow">Sheet music with letters · free</div>
+  <h1>Every note, <em>named</em> — as if written in by hand.</h1>
+  <p>Upload a photo or PDF of any piano score. Notalo writes the letter under each note, adds chord symbols above the bar, and gives you a MIDI file to practice with.</p>
+  <a class="btn fill" href="#tool">Add letters to my score</a>
+  <span class="fmt">PDF · JPG · PNG &nbsp;—&nbsp; files are deleted right after processing</span>
+
+  <figure class="staff">
+    <svg viewBox="0 0 760 170" role="img" aria-label="A hand-lettered staff: noteheads with C D E F G written beneath in red ink">
+      <g stroke="var(--rule)" stroke-width="1">
+        <line x1="20" y1="40" x2="740" y2="40"/><line x1="20" y1="52" x2="740" y2="52"/><line x1="20" y1="64" x2="740" y2="64"/><line x1="20" y1="76" x2="740" y2="76"/><line x1="20" y1="88" x2="740" y2="88"/>
+      </g>
+      <line x1="20" y1="40" x2="20" y2="88" stroke="var(--ink)" stroke-width="1.2"/>
+      <line x1="740" y1="40" x2="740" y2="88" stroke="var(--ink)" stroke-width="1.2"/>
+      <line x1="734" y1="40" x2="734" y2="88" stroke="var(--ink)" stroke-width="3"/>
+      <text x="34" y="92" font-family="Cormorant Garamond, serif" font-size="72" fill="var(--ink)" font-style="italic">𝄞</text>
+      <g fill="var(--ink)">
+        <ellipse cx="180" cy="94" rx="7" ry="5" transform="rotate(-20 180 94)"/><line x1="186.5" y1="92" x2="186.5" y2="50" stroke="var(--ink)" stroke-width="1.4"/><line x1="168" y1="94" x2="192" y2="94" stroke="var(--ink)" stroke-width="1.2"/>
+        <ellipse cx="270" cy="88" rx="7" ry="5" transform="rotate(-20 270 88)"/><line x1="276.5" y1="86" x2="276.5" y2="44" stroke="var(--ink)" stroke-width="1.4"/>
+        <ellipse cx="360" cy="82" rx="7" ry="5" transform="rotate(-20 360 82)"/><line x1="366.5" y1="80" x2="366.5" y2="38" stroke="var(--ink)" stroke-width="1.4"/>
+        <ellipse cx="450" cy="76" rx="7" ry="5" transform="rotate(-20 450 76)"/><line x1="456.5" y1="74" x2="456.5" y2="32" stroke="var(--ink)" stroke-width="1.4"/>
+        <ellipse cx="540" cy="70" rx="7" ry="5" transform="rotate(-20 540 70)"/><line x1="546.5" y1="68" x2="546.5" y2="26" stroke="var(--ink)" stroke-width="1.4"/>
+        <ellipse cx="630" cy="64" rx="7" ry="5" transform="rotate(-20 630 64)" fill="none" stroke="var(--ink)" stroke-width="1.6"/><line x1="636.5" y1="62" x2="636.5" y2="20" stroke="var(--ink)" stroke-width="1.4"/>
+      </g>
+      <g font-family="Cormorant Garamond, serif" font-style="italic" font-size="26" fill="var(--red)" text-anchor="middle">
+        <text x="180" y="132">C</text><text x="270" y="132">D</text><text x="360" y="132">E</text><text x="450" y="132">F</text><text x="540" y="132">G</text><text x="630" y="132">A</text>
+      </g>
+      <g font-family="Cormorant Garamond, serif" font-size="18" fill="var(--green)" text-anchor="middle">
+        <text x="230" y="24">C</text><text x="500" y="24">F</text>
+      </g>
+      <text x="740" y="160" font-family="Cormorant Garamond, serif" font-style="italic" font-size="14" fill="var(--ink-2)" text-anchor="end">right hand in red · left hand in blue · chords in green</text>
+    </svg>
+    <figcaption>Actual output style. Letters set in ink beneath each note.</figcaption>
+  </figure>
+</section>
+
+<section id="how">
+  <div class="sec-head"><div class="eyebrow">The method</div><h2>Three steps, no software</h2></div>
+  <div class="steps">
+    <div class="step"><div class="n">I</div><h3>Upload</h3><p>A photo from your phone, a scan, or the PDF you already have.</p></div>
+    <div class="step"><div class="n">II</div><h3>Choose the letters</h3><p>C D E, Do Re Mi, ドレミ, German letters, or numbers. Above or below the note.</p></div>
+    <div class="step"><div class="n">III</div><h3>Download</h3><p>The same page with letters, chords in green, and a MIDI file of what was read.</p></div>
+  </div>
+</section>
+
+<section id="tool">
+  <div class="sec-head"><div class="eyebrow">Your score</div><h2>Add letters</h2><p>Clean, printed sheet music works best. Blurry photos or hand-drawn scans may miss notes.</p></div>
+  <div class="tool">
+    <div class="drop"><strong>Drop your sheet music here</strong><span>or click to browse · PDF, JPG, PNG · up to 20 MB</span></div>
+    <div class="opts">
+      <div><label for="m-lang">Letters</label><select id="m-lang"><option>Letters (C D E)</option><option>Solfège (Do Re Mi)</option><option>ドレミ</option><option>German (C D E H)</option><option>Numbers (1 2 3)</option></select></div>
+      <div><label for="m-pos">Position</label><select id="m-pos"><option>Below note</option><option>Above note</option></select></div>
+      <div><label for="m-lay">Layout</label><select id="m-lay"><option>Avoid overlaps</option><option>Align in rows</option><option>Overlay</option></select></div>
+    </div>
+    <div class="act"><button class="btn fill" type="button">Add letters</button><small>Chord symbols included · 3 free conversions today</small></div>
+  </div>
+</section>
+
+<section id="compare">
+  <div class="sec-head"><div class="eyebrow">Compared</div><h2>From a photo, not a file</h2><p>Most letter-note tools need a MusicXML file first. Notalo reads the page itself.</p></div>
+  <div class="cmp"><table>
+    <tr><th></th><th>Notalo</th><th>MusicXML tools</th></tr>
+    <tr><td>Input</td><td>PDF, JPG, PNG</td><td>MusicXML</td></tr>
+    <tr><td>Prep</td><td>None</td><td>Export from MuseScore first</td></tr>
+    <tr><td>Labels</td><td>Letters, solfège, numbers · 5 systems</td><td>Usually letters</td></tr>
+    <tr><td>Price</td><td>Free, supported by ads</td><td>Often limited by saved scores</td></tr>
+    <tr><td>Best for</td><td>A score you only have on paper</td><td>Musicians already in MusicXML</td></tr>
+  </table></div>
+</section>
+
+<section id="faq">
+  <div class="sec-head"><div class="eyebrow">Questions</div><h2>Before you begin</h2></div>
+  <details><summary>Is it free?</summary><p>Yes. No sign-up, no credits. Ads keep it running.</p></details>
+  <details><summary>Are my files stored?</summary><p>No. Uploads and results are deleted the moment processing ends.</p></details>
+  <details><summary>Can I get a MIDI file?</summary><p>Yes. A practice MIDI with note lengths, at any tempo. Rests and ties are not read.</p></details>
+  <details><summary>Which scores work best?</summary><p>Printed notation: a PDF from notation software or a straight, sharp scan.</p></details>
+</section>
+
+<footer>
+  <div>Notalo · Trained on DeepScoresV2 (CC BY 4.0)</div>
+  <div class="links"><a href="#">Songs with letters</a><a href="#">How to read sheet music</a><a href="#">Scanner</a><a href="#">MIDI</a><a href="#">Privacy</a><a href="#">Terms</a></div>
+</footer>
+</div>
