@@ -11,7 +11,9 @@
 | AWS Lightsail | Notalo 웹사이트가 실제로 켜져서 돌아가는 컴퓨터(서버). 월 10~13불짜리 작은 컴퓨터. | 존재만 앎, 접속정보 모름 |
 | Cloudflare | notalo.xyz 주소를 진짜 서버로 연결해주는 곳(DNS). 이메일 받기(Email Routing)도 시도했는데 무료 요금제엔 없어서 못 씀. | notalo.xyz 도메인이 여기 연결된 것만 앎 |
 | Google Analytics (GA4) | 사이트에 사람이 몇 명 왔는지 세어주는 도구. 추적 ID `G-YKTS1ZLM3G`. | 추적 ID만 앎(코드에 박혀있음) |
-| Google AdSense | 사이트에 광고 붙여서 돈 버는 도구. 광고주 ID `ca-pub-1044528124208901`. | ID만 앎, 승인 여부 모름 |
+| Google AdSense | 사이트에 광고 붙여서 돈 버는 도구. 광고주 ID `ca-pub-1044528124208901`. | ID만 앎, 2026-09-24 기준 "게재 가능 여부 검토 중"(심사 대기) |
+| Google Search Console | 구글이 우리 사이트를 어떻게 보는지(색인·검색어·노출) 알려주는 곳. | 속성 2개(www / non-www) 등록됨. sitemap은 "가져올 수 없음" 표시 중이나 검색엔 이미 뜸 — 무시 |
+| Google Ads Keyword Planner | 키워드별 월 검색량 조회. 광고 안 돌리고 조회만 씀(구간값으로 나옴). | `docs/keywords-en-2026-09.csv`가 여기서 뽑은 것 |
 | Google OAuth (Sign in with Google) | "구글로 로그인" 버튼 눌렀을 때 진짜 구글 계정인지 확인해주는 열쇠. | client_id는 서버가 `/auth/config`로 줌, 값 자체는 모름 |
 | Gmail (xorud386@gmail.com) | 사용자 문의 메일 받는 곳. Terms/Privacy 페이지의 연락처로 씀. | 이메일 주소만 앎 |
 | PWA Builder (pwabuilder.com) | 웹사이트를 안드로이드 앱 파일(APK/AAB)로 바꿔주는 도구. Play Store에 올릴 파일 여기서 만듦. | 만들어준 파일(keystore, aab)만 받아서 씀 |
