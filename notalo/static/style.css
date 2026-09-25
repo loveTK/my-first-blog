@@ -14,10 +14,10 @@ h1,h2,h3{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;font-w
 a{color:var(--accent-ink)}
 button{font:inherit;cursor:pointer;border-radius:0;border:1px solid transparent;padding:11px 22px;background:none;color:var(--fg);white-space:nowrap;font-size:12px;letter-spacing:.18em;text-transform:uppercase;transition:background .2s,color .2s,border-color .2s}
 button[disabled]{opacity:.5;cursor:default}
-a.btn-p,a.btn-o{display:inline-block;text-decoration:none;font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;border:1px solid transparent;color:var(--fg)}
+a.btn-p,a.btn-o{display:inline-block;text-decoration:none;font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:11px 22px;border:1px solid transparent}
 .btn-p{background:var(--fg);color:var(--bg);border-color:var(--fg);padding:15px 32px}
 .btn-p:hover{background:var(--accent);border-color:var(--accent);color:#fff}
-.btn-o{border-color:var(--line)}
+.btn-o{color:var(--fg);border-color:var(--line)}
 .btn-o:hover{border-color:var(--fg)}
 .btn-g{color:var(--muted)}
 .btn-g:hover{color:var(--fg)}
