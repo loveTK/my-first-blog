@@ -336,6 +336,8 @@ def _clef_key_end(ink, ys, space, x0):
 
 TRAIN_SS = 16.5  # 학습 데이터(DeepScoresV2) staff space(px). 추론 전 페이지를 이 크기로 맞춤
 TILE, STRIDE = 1024, 960  # 겹침 64px ≈ 4 staff space(음표머리 1개는 1 ss)
+SHARPEN = (3.0, 2.0)  # YOLO 입력 언샤프 마스크 (σ px @TRAIN_SS, 강도). (x, 0)이면 끔
+PAGE_SHARPEN = 0.12  # 페이지 전체 언샤프 σ(staff space 배수). 0이면 끔. 둘 다 tests/fixtures 사진 변형으로 고른 값
 # 0~8: 현재 배포 모델. 9~12: 재학습 대상(train/prep_ds2.py와 순서·개수 동일해야 함) — 구모델은 이 인덱스를 절대
 # 못 내놓으니(클래스 수가 9개뿐) 아래 note_durations은 신모델일 때만 이 클래스를 쓰고 구모델이면 그냥 폴백함.
 CLASSES = ["notehead_black", "notehead_half", "notehead_whole", "sharp", "flat", "natural", "clef_g", "clef_f", "clef_c",
@@ -357,6 +359,9 @@ def detect_symbols(page_rgb, ss, conf=0.3):
     페이지를 학습 staff space로 리사이즈 → 1024 타일(겹침 128) → 클래스 무관 NMS."""
     scale = TRAIN_SS / ss
     img = cv2.resize(page_rgb, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+    if SHARPEN[1]:  # 모델이 흐림에 약함(σ≈0.1ss부터 누락 급증, tests/fixtures *-photo). 학습 배율에서 언샤프 마스크
+        f = img.astype(np.float32)
+        img = np.clip(cv2.addWeighted(f, 1 + SHARPEN[1], cv2.GaussianBlur(f, (0, 0), SHARPEN[0]), -SHARPEN[1], 0), 0, 255).astype(np.uint8)
     H, W = img.shape[:2]
     if H < TILE or W < TILE:
         img = cv2.copyMakeBorder(img, 0, max(TILE - H, 0), 0, max(TILE - W, 0), cv2.BORDER_CONSTANT, value=(255, 255, 255))
@@ -533,6 +538,11 @@ def detect_notes(page_rgb):
     if not os.path.exists(WEIGHTS):  # 가중치 미배포 상태(학습 중)엔 빈 결과 — 서비스는 안 죽게
         return []
     ss = float(np.median([s["space"] for s in staves]))
+    if PAGE_SHARPEN:  # 흐린 사진: 오선 간격을 안 뒤에 그 비율로 페이지를 선명하게 → 오선·덧줄·조표 판단이 같은 잉크로
+        f = gray.astype(np.float32)
+        gray = np.clip(cv2.addWeighted(f, 3, cv2.GaussianBlur(f, (0, 0), PAGE_SHARPEN * ss), -2, 0), 0, 255).astype(np.uint8)
+        ink = binarize(gray)
+        staves = detect_staves(ink)
     # YOLO에도 조명 보정본을 줌: 학습 데이터(DeepScoresV2)가 흰 종이라 누렇거나 그늘진 스캔과의 차이를 줄임
     dets = detect_symbols(cv2.cvtColor(flatten(gray), cv2.COLOR_GRAY2RGB), ss)
     heads = []

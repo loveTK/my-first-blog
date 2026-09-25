@@ -1,6 +1,7 @@
 """정확도 게이트: 음높이 ≥98%, 누락 ≤1%, 오탐 ≤0.5%.
 fixtures/*.{png,jpg,jpeg,pdf} + 같은 이름 .json 정답 필요.
 정답 스키마: {"notes":[{"x":int,"y":int,"pitch":"C4"}, ...]}
+픽스처: make_song_fixtures.py(깨끗한 LilyPond 렌더, 커밋됨) → degrade_fixtures.py(기울임·사진 변형, 커밋 안 함 — 실행 전에 한 번 돌릴 것)
 실행: py -3 tests/test_accuracy.py  (pytest 안 씀 — 의존성 추가 금지)"""
 import glob
 import json
@@ -8,6 +9,7 @@ import os
 import sys
 
 import cv2
+import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import core  # noqa: E402
@@ -58,9 +60,16 @@ if __name__ == "__main__":
         gt_notes, ignore = gt["notes"], gt.get("ignore", [])  # ignore: 정답을 만들 수 없는 구역(x1,y1,x2,y2). 그 안의 검출은 평가 제외
 
         det_notes = []
+        orig = cv2.imread(img_path)
         for page in core.load_pages(img_path):
-            f = cv2.imread(img_path).shape[0] / page.shape[0]  # load_pages가 큰 페이지를 축소함 → 정답(원본 px) 좌표계로 되돌림
-            det_notes += [n for n in ({**n, "x": n["x"] * f, "y": n["y"] * f} for n in core.detect_notes(page))
+            # load_pages = deskew(shrink(원본)) → 검출 좌표를 정답(원본 px) 좌표계로 되돌림: 회전 역변환 후 축소 배율
+            f = orig.shape[0] / page.shape[0]
+            deg = core.skew_angle(cv2.cvtColor(core.shrink(orig), cv2.COLOR_BGR2GRAY))
+            pts = np.array([[n["x"], n["y"]] for n in core.detect_notes(page)], dtype=np.float32).reshape(-1, 1, 2)
+            if abs(deg) >= 0.1 and len(pts):  # deskew와 같은 문턱값
+                h, w = page.shape[:2]
+                pts = cv2.transform(pts, cv2.invertAffineTransform(cv2.getRotationMatrix2D((w / 2, h / 2), deg, 1.0)))
+            det_notes += [n for n in ({"x": float(x) * f, "y": float(y) * f, "pitch": d["pitch"]} for d, (x, y) in zip(core.detect_notes(page), pts[:, 0]))
                           if not any(x1 <= n["x"] <= x2 and y1 <= n["y"] <= y2 for x1, y1, x2, y2 in ignore)]
 
         r = score_one(gt_notes, det_notes)

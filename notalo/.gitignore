@@ -6,4 +6,8 @@
 notalo.db
 runs/
 tests/fixtures/*
+!tests/fixtures/*.png
+!tests/fixtures/*.json
+tests/fixtures/*-skew.*
+tests/fixtures/*-photo.*
 train/runs/
