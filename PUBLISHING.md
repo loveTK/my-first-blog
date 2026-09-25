@@ -5,7 +5,7 @@
 
 ## 1. GitHub Pages 활성화
 
-1. GitHub에서 이 저장소(`loveTK/my-first-blog`)로 이동
+1. GitHub에서 이 저장소(`loveTK/notalo`)로 이동
 2. 상단 탭에서 **Settings** 클릭
 3. 왼쪽 메뉴에서 **Pages** 클릭
 4. **Build and deployment** 섹션에서:
@@ -16,7 +16,7 @@
 ## 2. 배포 확인
 
 - 저장 후 1~2분 정도 기다리면 같은 페이지 상단에 다음과 같은 초록색 안내가 뜹니다:
-  `Your site is live at https://lovetk.github.io/my-first-blog/`
+  `Your site is live at https://lovetk.github.io/notalo/`
 - 이 주소가 실제 홈페이지 URL입니다.
 - Actions 탭에서 `pages build and deployment` 워크플로가 성공(초록 체크)했는지 확인할 수 있습니다.
 

@@ -7,7 +7,7 @@
 
 | 서비스 | 역할(초등학생 설명) | 아는 정보 |
 |---|---|---|
-| GitHub (loveTK/my-first-blog) | 코드를 저장하고, 코드가 바뀌면 자동으로 배포도 해주는 곳. 이 저장소 자체. | repo 이름만 앎, 비번 모름 |
+| GitHub (loveTK/notalo) | 코드를 저장하고, 코드가 바뀌면 자동으로 배포도 해주는 곳. 이 저장소 자체. | repo 이름만 앎, 비번 모름 |
 | GitHub Actions | 코드 올리면 자동으로 "서버에 새 버전 올리기"를 실행해주는 로봇. `.github/workflows/deploy-notalo.yml` | 워크플로 파일 위치만 앎 |
 | AWS Lightsail | Notalo 웹사이트가 실제로 켜져서 돌아가는 컴퓨터(서버). 월 10~13불짜리 작은 컴퓨터. | 존재만 앎, 접속정보 모름 |
 | Cloudflare | notalo.xyz 주소를 진짜 서버로 연결해주는 곳(DNS). 이메일 받기(Email Routing)도 시도했는데 무료 요금제엔 없어서 못 씀. | notalo.xyz 도메인이 여기 연결된 것만 앎 |
