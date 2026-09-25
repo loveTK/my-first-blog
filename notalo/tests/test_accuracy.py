@@ -41,6 +41,9 @@ def score_one(gt_notes, det_notes):
     return {
         "gt": len(gt_notes), "det": len(det_notes), "matched": len(pairs),
         "correct_pitch": sum(1 for g, d in pairs if g["pitch"] == d["pitch"]),
+        "with_dur": sum(1 for g, _ in pairs if "dur" in g),  # 정답에 음길이 있는 픽스처만(MIDI 정확도)
+        "correct_dur": sum(1 for g, d in pairs if "dur" in g and abs(g["dur"] - d["dur"]) < 1e-6),
+        "correct_midi": sum(1 for g, d in pairs if "dur" in g and g["pitch"] == d["pitch"] and abs(g["dur"] - d["dur"]) < 1e-6),
         "missing": len(gt_notes) - len(pairs),
         "false_pos": len(det_notes) - len(used),
     }
@@ -51,7 +54,7 @@ if __name__ == "__main__":
     imgs = sorted(p for p in glob.glob(os.path.join(FIX, "*")) if p.rsplit(".", 1)[-1] in ("png", "jpg", "jpeg", "pdf"))
     assert imgs, f"fixtures 비어있음(정답 이미지 넣어야 함): {FIX}"
 
-    totals = {"gt": 0, "det": 0, "matched": 0, "correct_pitch": 0, "missing": 0, "false_pos": 0}
+    totals = {"gt": 0, "det": 0, "matched": 0, "correct_pitch": 0, "missing": 0, "false_pos": 0, "with_dur": 0, "correct_dur": 0, "correct_midi": 0}
     for img_path in imgs:
         json_path = os.path.splitext(img_path)[0] + ".json"
         assert os.path.exists(json_path), f"정답 json 없음: {json_path}"
@@ -69,14 +72,15 @@ if __name__ == "__main__":
             if abs(deg) >= 0.1 and len(pts):  # deskew와 같은 문턱값
                 h, w = page.shape[:2]
                 pts = cv2.transform(pts, cv2.invertAffineTransform(cv2.getRotationMatrix2D((w / 2, h / 2), deg, 1.0)))
-            det_notes += [n for n in ({"x": float(x) * f, "y": float(y) * f, "pitch": d["pitch"]} for d, (x, y) in zip(core.detect_notes(page), pts[:, 0]))
+            det_notes += [n for n in ({"x": float(x) * f, "y": float(y) * f, "pitch": d["pitch"], "dur": d["dur"]} for d, (x, y) in zip(core.detect_notes(page), pts[:, 0]))
                           if not any(x1 <= n["x"] <= x2 and y1 <= n["y"] <= y2 for x1, y1, x2, y2 in ignore)]
 
         r = score_one(gt_notes, det_notes)
         for k in totals:
             totals[k] += r[k]
         print(f"{os.path.basename(img_path)}: gt={r['gt']} det={r['det']} matched={r['matched']} "
-              f"정답음높이={r['correct_pitch']} 누락={r['missing']} 오탐={r['false_pos']}")
+              f"정답음높이={r['correct_pitch']} 누락={r['missing']} 오탐={r['false_pos']}"
+              + (f" 정답음길이={r['correct_dur']}/{r['with_dur']}" if r["with_dur"] else ""))
 
     pitch_acc = totals["correct_pitch"] / (totals["matched"] or 1)
     missing_rate = totals["missing"] / (totals["gt"] or 1)
@@ -86,6 +90,9 @@ if __name__ == "__main__":
     print(f"음높이 정확도 {pitch_acc:.1%} (기준 ≥98%)")
     print(f"누락률 {missing_rate:.1%} (기준 ≤1%)")
     print(f"오탐률 {fp_rate:.1%} (기준 ≤0.5%)")
+    if totals["with_dur"]:  # 게이트엔 안 넣음(쉼표·붙임줄·잇단음표 미지원이라 아직 기준 못 세움) — 보고만
+        print(f"음길이 정확도 {totals['correct_dur'] / totals['with_dur']:.1%} / MIDI(음높이+음길이 둘 다) {totals['correct_midi'] / totals['with_dur']:.1%}"
+              f" — 매칭된 {totals['with_dur']}개 기준, 누락 포함 시 {totals['correct_midi'] / totals['gt']:.1%}")
 
     gate = pitch_acc >= 0.98 and missing_rate <= 0.01 and fp_rate <= 0.005
     print("PASS" if gate else "FAIL")

@@ -21,9 +21,10 @@ SONGS_DIR = os.path.join(ROOT, "songs")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 LETTERS = "CDEFGAB"
 ATTR = r"""\layout { \context { \Score \override NoteHead.output-attributes = #(lambda (g)
-  (let ((p (ly:event-property (ly:grob-property g 'cause) 'pitch)) (x (ly:grob-extent g g X)) (y (ly:grob-extent g g Y)))
-    (list (cons 'data-note (format #f "~a ~a ~a ~a ~a" (ly:pitch-notename p) (ly:pitch-alteration p) (ly:pitch-octave p)
-                                   (/ (+ (car x) (cdr x)) 2) (/ (+ (car y) (cdr y)) 2)))))) } }
+  (let* ((ev (ly:grob-property g 'cause)) (p (ly:event-property ev 'pitch)) (d (ly:event-property ev 'duration))
+         (x (ly:grob-extent g g X)) (y (ly:grob-extent g g Y)))
+    (list (cons 'data-note (format #f "~a ~a ~a ~a ~a ~a ~a" (ly:pitch-notename p) (ly:pitch-alteration p) (ly:pitch-octave p)
+                                   (/ (+ (car x) (cdr x)) 2) (/ (+ (car y) (cdr y)) 2) (ly:duration-log d) (ly:duration-dot-count d)))))) } }
 """
 NOTE_RE = re.compile(r'<g data-note="([^"]*)">(?:\s*<a[^>]*>)?\s*<g transform="translate\(([^,]+), ([^)]+)\)">')
 
@@ -48,10 +49,11 @@ def build(slug):
         x0, y0, w, h = map(float, re.search(r'viewBox="([^"]+)"', svg).group(1).split())
         notes = []
         for m in NOTE_RE.finditer(svg):
-            name, alt, octv, ex, ey = m.group(1).split()
+            name, alt, octv, ex, ey, dlog, dots = m.group(1).split()
             tx, ty = float(m.group(2)), float(m.group(3))
             cx, cy = tx + float(Fraction(ex)), ty - float(Fraction(ey))  # LilyPond는 y가 위로, SVG는 아래로
-            notes.append({"x": round((cx - x0) * W / w), "y": round((cy - y0) * H / h), "pitch": pitch_str(name, alt, octv)})
+            dur = 4 / 2 ** int(dlog) * (2 - 0.5 ** int(dots))  # 4분음표=1 (core.note_durations와 같은 단위), 점은 1.5배
+            notes.append({"x": round((cx - x0) * W / w), "y": round((cy - y0) * H / h), "pitch": pitch_str(name, alt, octv), "dur": dur})
         assert notes, slug
         os.makedirs(OUT, exist_ok=True)
         shutil.copy(pngs[0], os.path.join(OUT, slug + ".png"))

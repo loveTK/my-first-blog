@@ -691,7 +691,8 @@ def note_durations(ink, staves, heads, ss, dets=()):
         else:
             n = _model_flag_count(dets, h["x"], h["y"], ss) if rhythm_model else _flags(on, h["x"], h["y"], ss, thick[h["staff"]])
             base = 1 / 2 ** min(n, 3)
-        dotted = _model_dotted(dets, h["x"], h["y"], ss) if dot_model else _dotted(on, h["x"], h["y"], ss)
+        wide = 0.4 * ss if h["cls"] == "notehead_whole" else 0  # 온음표 머리는 넓어서(≈1.7ss) 점이 그만큼 오른쪽에 붙음
+        dotted = _model_dotted(dets, h["x"], h["y"], ss) if dot_model else _dotted(on, h["x"] + wide, h["y"], ss)
         h["dur"] = base * (1.5 if dotted else 1)
     return heads
 
