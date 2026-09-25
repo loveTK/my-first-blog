@@ -177,5 +177,7 @@
  "faq.q9": "Aggiunge anche le sigle degli accordi?",
  "faq.a9": "Sì. Notalo legge le note di ogni battuta, ricava l'accordo (C, Am, G7…) e lo scrive in verde sopra il pentagramma: comodo per accompagnare. È una stima dalle note scritte; se non serve, togli la spunta.",
  "hero.badge_chords": "Sigle accordi",
- "hero.badge_midi": "MIDI di studio"
+ "hero.badge_midi": "MIDI di studio",
+ "faq.q10": "Notalo è uno scanner di spartiti?",
+ "faq.a10": "Sì. Legge una foto, una scansione o un PDF dello spartito e te lo restituisce con i nomi delle note, più le sigle degli accordi e un file MIDI di ciò che ha letto. Niente app, gratis."
 }

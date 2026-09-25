@@ -177,5 +177,7 @@
  "faq.q9": "Werden auch Akkordsymbole eingetragen?",
  "faq.a9": "Ja. Notalo liest die Noten jedes Takts, bestimmt den Akkord (C, Am, G7…) und schreibt ihn grün über die Notenzeile – praktisch zum Begleiten. Es ist eine Schätzung aus den notierten Tönen; über das Kästchen lässt es sich abschalten.",
  "hero.badge_chords": "Akkordsymbole",
- "hero.badge_midi": "Übungs-MIDI"
+ "hero.badge_midi": "Übungs-MIDI",
+ "faq.q10": "Ist Notalo ein Notenscanner?",
+ "faq.a10": "Ja. Es liest ein Foto, einen Scan oder ein PDF deiner Noten und gibt dir dieselben Noten mit Notennamen zurück – plus Akkordsymbole und eine MIDI-Datei des Gelesenen. Keine App, kostenlos."
 }

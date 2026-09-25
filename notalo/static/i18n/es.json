@@ -177,5 +177,7 @@
  "faq.q9": "¿También añade el cifrado de acordes?",
  "faq.a9": "Sí. Notalo lee las notas de cada compás, deduce el acorde (C, Am, G7…) y lo escribe en verde sobre el pentagrama: útil para acompañar. Es una estimación a partir de las notas escritas; si no lo necesitas, desmarca la casilla.",
  "hero.badge_chords": "Cifrado de acordes",
- "hero.badge_midi": "MIDI de práctica"
+ "hero.badge_midi": "MIDI de práctica",
+ "faq.q10": "¿Notalo es un escáner de partituras?",
+ "faq.a10": "Sí. Lee una foto, un escaneo o un PDF de la partitura y te la devuelve con los nombres de las notas, más el cifrado de acordes y un archivo MIDI de lo que leyó. Sin app, gratis."
 }
