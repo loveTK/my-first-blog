@@ -179,5 +179,6 @@
  "hero.badge_chords": "Akkordsymbole",
  "hero.badge_midi": "Übungs-MIDI",
  "faq.q10": "Ist Notalo ein Notenscanner?",
- "faq.a10": "Ja. Es liest ein Foto, einen Scan oder ein PDF deiner Noten und gibt dir dieselben Noten mit Notennamen zurück – plus Akkordsymbole und eine MIDI-Datei des Gelesenen. Keine App, kostenlos."
+ "faq.a10": "Ja. Es liest ein Foto, einen Scan oder ein PDF deiner Noten und gibt dir dieselben Noten mit Notennamen zurück – plus Akkordsymbole und eine MIDI-Datei des Gelesenen. Keine App, kostenlos.",
+ "tool.lang_num": "Zahlen (1 2 3, C=1)"
 }

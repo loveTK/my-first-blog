@@ -179,5 +179,6 @@
  "hero.badge_chords": "Sigle accordi",
  "hero.badge_midi": "MIDI di studio",
  "faq.q10": "Notalo è uno scanner di spartiti?",
- "faq.a10": "Sì. Legge una foto, una scansione o un PDF dello spartito e te lo restituisce con i nomi delle note, più le sigle degli accordi e un file MIDI di ciò che ha letto. Niente app, gratis."
+ "faq.a10": "Sì. Legge una foto, una scansione o un PDF dello spartito e te lo restituisce con i nomi delle note, più le sigle degli accordi e un file MIDI di ciò che ha letto. Niente app, gratis.",
+ "tool.lang_num": "Numeri (1 2 3, Do=1)"
 }

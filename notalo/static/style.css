@@ -184,3 +184,16 @@ footer a{color:inherit}
 .chk input{accent-color:#1F7A4A;width:18px;height:18px;margin:0}
 .badges{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1F7A4A;background:#1F7A4A14;border:1px solid #1F7A4A33;border-radius:999px;padding:6px 12px}
+.article{max-width:760px}
+.article h1{font-family:"Bricolage Grotesque",sans-serif;font-size:clamp(30px,4.5vw,44px);line-height:1.1;margin:24px 0 14px}
+.article h2{margin:44px 0 12px;font-size:24px}
+.article h3{margin:26px 0 8px;font-size:18px}
+.article p,.article li{font-size:17px;line-height:1.7}
+.article img{width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;margin:10px 0 6px}
+.article figcaption{font-size:13px;color:var(--muted);margin-bottom:20px}
+.article .cta{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin:32px 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.article .cta p{margin:0;flex:1;min-width:240px;font-size:15px}
+.article .toc{font-size:15px;color:var(--muted);margin:0 0 8px;padding-left:18px}
+.article table{width:100%;border-collapse:collapse;font-size:15px;margin:10px 0 20px}
+.article th,.article td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+.article th{color:var(--muted);font-weight:500;font-size:13px}

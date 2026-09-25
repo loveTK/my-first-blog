@@ -112,7 +112,7 @@
  "faq.q3": "Is it free?",
  "faq.a3": "Yes — completely free, with no sign-up, credits, or payment required. The site is supported by ads.",
  "faq.q4": "Which letter and solfège systems are supported?",
- "faq.a4": "English (C D E), Italian (Do Re Mi), Japanese (ドレミ), and German (C D E H).",
+ "faq.a4": "Letters (C D E), German letters (C D E H), Italian solfège (Do Re Mi), Japanese solfège (ドレミ), and numbers (1 2 3, C=1).",
  "faq.q5": "Are my files stored?",
  "faq.a5": "No. Uploaded files and results are deleted immediately after processing.",
  "faq.q6": "Which scores work best?",
@@ -179,5 +179,6 @@
  "hero.badge_chords": "Chord symbols",
  "hero.badge_midi": "Sheet music to MIDI",
  "faq.q10": "Is Notalo a sheet music scanner?",
- "faq.a10": "Yes. It scans a photo, scan or PDF of sheet music, reads the notes, and gives you back the same sheet music with letters — plus chord symbols and a MIDI file of what it read. No app to install, free."
+ "faq.a10": "Yes. It scans a photo, scan or PDF of sheet music, reads the notes, and gives you back the same sheet music with letters — plus chord symbols and a MIDI file of what it read. No app to install, free.",
+ "tool.lang_num": "Numbers (1 2 3, C=1)"
 }

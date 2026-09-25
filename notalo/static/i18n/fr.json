@@ -179,5 +179,6 @@
  "hero.badge_chords": "Symboles d'accords",
  "hero.badge_midi": "MIDI d'entraînement",
  "faq.q10": "Notalo est-il un scanner de partitions ?",
- "faq.a10": "Oui. Il lit une photo, un scan ou un PDF de votre partition et vous la renvoie avec le nom des notes, plus les symboles d'accords et un fichier MIDI de ce qu'il a lu. Sans application, gratuit."
+ "faq.a10": "Oui. Il lit une photo, un scan ou un PDF de votre partition et vous la renvoie avec le nom des notes, plus les symboles d'accords et un fichier MIDI de ce qu'il a lu. Sans application, gratuit.",
+ "tool.lang_num": "Chiffres (1 2 3, Do=1)"
 }

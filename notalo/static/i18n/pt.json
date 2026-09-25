@@ -179,5 +179,6 @@
  "hero.badge_chords": "Cifras de acordes",
  "hero.badge_midi": "MIDI de prática",
  "faq.q10": "O Notalo é um scanner de partituras?",
- "faq.a10": "Sim. Ele lê uma foto, digitalização ou PDF da partitura e devolve a mesma partitura com o nome das notas, mais cifras dos acordes e um arquivo MIDI do que leu. Sem app, grátis."
+ "faq.a10": "Sim. Ele lê uma foto, digitalização ou PDF da partitura e devolve a mesma partitura com o nome das notas, mais cifras dos acordes e um arquivo MIDI do que leu. Sem app, grátis.",
+ "tool.lang_num": "Números (1 2 3, Dó=1)"
 }

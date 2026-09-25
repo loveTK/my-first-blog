@@ -280,6 +280,16 @@ def page_midi():
     return HTMLResponse(_variant("/sheet-music-to-midi"))
 
 
+GUIDES = {"/how-to-read-sheet-music": "guide-read.html", "/treble-clef-notes": "guide-treble.html", "/bass-clef-notes": "guide-bass.html"}
+
+
+@app.get("/how-to-read-sheet-music")
+@app.get("/treble-clef-notes")
+@app.get("/bass-clef-notes")
+def guide_page(request: Request):
+    return FileResponse(os.path.join(STATIC_DIR, GUIDES[request.url.path]))
+
+
 @app.get("/processing")
 def processing_page():
     return FileResponse(os.path.join(STATIC_DIR, "processing.html"))
