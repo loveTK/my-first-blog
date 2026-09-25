@@ -22,8 +22,8 @@ gtag('config', 'G-YKTS1ZLM3G');
 <meta name="theme-color" content="#0C0C0C">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Notalo">
-<link rel="stylesheet" href="/fonts.css">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/fonts.css?v=4">
+<link rel="stylesheet" href="/style.css?v=4">
 <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');</script>
 <div class="wrap">
 <header>
@@ -134,7 +134,7 @@ const detectLang = () => {
 };
 let currentLang = 'en';
 const loadLang = async code => {
-  const r = await fetch(`/i18n/${code}.json`);
+  const r = await fetch(`/i18n/${code}.json?v=4`);
   T = await r.json();
   currentLang = code;
   document.documentElement.lang = code;
