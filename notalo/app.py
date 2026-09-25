@@ -1,5 +1,7 @@
 """POST /convert (file, lang, position) → [원본]_plus.[ext]. 서버 저장 없음."""
 import collections
+import functools
+import html
 import json
 import os
 import re
@@ -15,6 +17,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from urllib.parse import quote
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
+from starlette.middleware.gzip import GZipMiddleware
 
 import auth
 import core
@@ -210,7 +213,7 @@ def job_midi(job_id: str, bpm: int = 90):
 # 검색어(Keyword Planner, 미국): sheet music scanner / scanner app / scanner online free 각 5K, sheet music to midi / pdf sheet to midi 각 5K — 전부 경쟁 낮음.
 PAGES = {
     "/sheet-music-scanner": {
-        "title": "Sheet Music Scanner – Photo or PDF to Letters and MIDI, Free Online | Notalo",
+        "title": "Sheet Music Scanner – Photo/PDF to Letters & MIDI | Notalo",
         "desc": "Free online sheet music scanner. Snap a photo or upload a PDF; Notalo reads the notes and returns the same sheet music with letters under every note, chord symbols, and a MIDI file. No app to install.",
         "h1": "Sheet music scanner: photo or PDF in, letters and MIDI out.",
         "sub": "Scan sheet music with your phone camera or upload a PDF. Notalo reads every note and gives you the sheet back with letters, chord symbols and a MIDI file — online, free, nothing to install.",
@@ -237,7 +240,7 @@ PAGES = {
 </section>""",
     },
     "/sheet-music-to-midi": {
-        "title": "Sheet Music to MIDI Converter – Free, Online, from a Photo or PDF | Notalo",
+        "title": "Sheet Music to MIDI Converter – Free, Online | Notalo",
         "desc": "Convert sheet music to MIDI online for free. Upload a photo or PDF; Notalo reads the notes and gives you a MIDI file with pitches, note lengths and your tempo — plus the sheet music with letters under every note.",
         "h1": "Sheet music to MIDI: upload a photo or PDF, download a MIDI file.",
         "sub": "Notalo reads the notes on your sheet music and turns them into a MIDI file with the right pitches and note lengths, at the tempo you choose. You also get the sheet back with letters under every note and chord symbols.",
@@ -338,7 +341,8 @@ def _hub(title, desc, url, intro, items):
     h = re.sub(r"<title>.*?</title>", f"<title>{title} | Notalo</title>", h, count=1)
     h = re.sub(r'(<meta name="description" content=")[^"]*(")', lambda mm: mm.group(1) + desc + mm.group(2), h)
     h = re.sub(r'<meta property="og:[^>]*>', "", h)
-    h = re.sub(r'<link rel="canonical" href="[^"]*">', f'<link rel="canonical" href="{url}">', h)
+    h = re.sub(r'<link rel="canonical" href="[^"]*">', f'<link rel="canonical" href="{url}"><meta property="og:url" content="{url}"><meta property="og:title" content="{title}">'
+               f'<meta property="og:image" content="https://notalo.xyz/songs/{items[0][0]}.png">', h)
     h = re.sub(r'<script type="application/ld\+json">.*?</script>', f'<script type="application/ld+json">{ld}</script>', h, count=1)
     return h
 
@@ -362,4 +366,50 @@ def processing_page():
     return FileResponse(os.path.join(STATIC_DIR, "processing.html"))
 
 
+# ---------- 홈 ?lang=xx: hreflang이 가리키는 주소를 서버에서도 그 언어로 ----------
+# JS만 title/lang을 바꾸면 canonical·og:url이 전부 /를 가리켜 구글이 hreflang을 무시하고 영어 하나로 합침 → 7개 언어가 색인 안 됨.
+_I18N_DIR = os.path.join(STATIC_DIR, "i18n")
+_I18N = {f[:-5]: json.load(open(os.path.join(_I18N_DIR, f), encoding="utf-8")) for f in os.listdir(_I18N_DIR) if f.endswith(".json")}
+
+
+@functools.lru_cache(maxsize=None)
+def _localized(code):
+    t, h = _I18N[code], _INDEX
+    if code == "en":
+        return h
+    esc = lambda s: html.escape(s, quote=True) if "<a " not in s else s  # data-i18n 본문은 JS와 같은 규칙(링크 있으면 HTML)
+    url = f"https://notalo.xyz/?lang={code}"
+    h = h.replace('<html lang="en">', f'<html lang="{code}">', 1)
+    h = re.sub(r"<title>.*?</title>", f"<title>{esc(t['meta.title'])}</title>", h, count=1)
+    for a in ('name="description"', 'property="og:description"', 'name="twitter:description"'):
+        h = re.sub(rf'(<meta {a} content=")[^"]*(")', lambda m: m.group(1) + esc(t["meta.desc"]) + m.group(2), h)
+    for a in ('property="og:title"', 'name="twitter:title"'):
+        h = re.sub(rf'(<meta {a} content=")[^"]*(")', lambda m: m.group(1) + esc(t["meta.title"]) + m.group(2), h)
+    h = h.replace('<link rel="canonical" href="https://notalo.xyz/">', f'<link rel="canonical" href="{url}">')
+    h = h.replace('<meta property="og:url" content="https://notalo.xyz/">', f'<meta property="og:url" content="{url}">')
+    h = re.sub(r'(<h1 data-i18n="hero.h1">).*?(</h1>)', lambda m: m.group(1) + esc(t["hero.h1"]) + m.group(2), h, count=1)
+    h = re.sub(r'(<p class="lead" data-i18n="hero.sub">).*?(</p>)', lambda m: m.group(1) + esc(t["hero.sub"]) + m.group(2), h, count=1)
+    if os.path.exists(os.path.join(STATIC_DIR, "hero", f"sample_{code}.webp")):
+        h = h.replace("/hero/sample_en.webp", f"/hero/sample_{code}.webp")  # og:image + 히어로 이미지
+    assert url in h
+    return h
+
+
+@app.get("/")
+def home(lang: str = ""):
+    return HTMLResponse(_localized(lang if lang in _I18N else "en"))
+
+
+@app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    """HTML은 매번 재검증(옛 CSS가 새 HTML에 섞이던 문제 재발 방지), ?v= 붙은 정적 파일은 1년 불변, 나머지 정적 파일은 하루."""
+    resp = await call_next(request)
+    if resp.headers.get("content-type", "").startswith("text/html"):
+        resp.headers["Cache-Control"] = "no-cache"
+    elif request.url.path.rsplit(".", 1)[-1] in ("css", "js", "png", "jpg", "webp", "woff2", "woff", "ttf", "json", "ico", "mid", "svg", "xml", "txt"):
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable" if "v=" in request.url.query else "public, max-age=86400"
+    return resp
+
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True))

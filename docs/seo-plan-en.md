@@ -257,3 +257,10 @@ sitemap에 전부 추가. 각 페이지 JSON-LD `MusicComposition` + `HowTo`.
 | PWA Builder | 웹사이트를 안드로이드 앱 파일로 바꿔주는 도구. |
 | Google Play Console | 앱을 스토어에 올리는 곳(예정, 아직 등록 안 함). |
 | Zenodo / DeepScoresV2 | AI가 학습한 악보 데이터 출처(계정 아님, 표기 의무). |
+
+---
+
+## 11. 기술 SEO 점검 (2026-09-25, 2차)
+
+고친 것: ① `/?lang=xx`를 서버에서 그 언어로 렌더(title·description·`<html lang>`·H1·canonical·og:url 자기 자신) — 전엔 canonical이 전부 `/`라 hreflang이 무시돼 7개 언어가 색인 불가였음 ② og:image·twitter:card 전 페이지 ③ `Cache-Control`(HTML no-cache, `?v=` 자산 1년, 나머지 하루) + gzip ④ 히어로 PNG→WebP(155→44KB) + `fetchpriority=high` ⑤ title 60자 안으로 ⑥ nav에 Songs·Learn 링크.
+남은 것: O Holy Night·Clair de Lune 곡 페이지, sitemap에 hreflang 대체 URL(xhtml:link), fonts.css 149KB 축소, 홍보(Pinterest·YouTube·Reddit — 코드 밖).
